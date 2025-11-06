@@ -218,15 +218,15 @@ class CompetencyDAO:
         for node in graph_data.get("nodes", []):
             node_uri = node["id"]
 
-            if cls._is_system_uri(node_uri):
-                logger.debug(f"Skipping system URI: {node_uri}")
-                skipped_system += 1
-                continue
+            # if cls._is_system_uri(node_uri):
+            #     logger.debug(f"Skipping system URI: {node_uri}")
+            #     skipped_system += 1
+            #     continue
 
             # literal-узлы не создаём как ресурсы
-            if node.get("type") == "literal":
-                logger.info(f"Skipping literal node: {node_uri}")
-                continue
+            # if node.get("type") == "literal":
+            #     logger.info(f"Skipping literal node: {node_uri}")
+            #     continue
 
             # нормализуем id узла на всякий случай
             node_uri = cls._ensure_uri(node_uri, repo)
@@ -278,10 +278,10 @@ class CompetencyDAO:
                 target_literal = None  # это URI
 
             # 3) системные URI — после нормализации
-            if cls._is_system_uri(source) or cls._is_system_uri(predicate) or (is_target_uri and cls._is_system_uri(target_candidate)):
-                logger.debug(f"Skipping system link: {source} -> {target_candidate} ({predicate})")
-                skipped_system += 1
-                continue
+            # if cls._is_system_uri(source) or cls._is_system_uri(predicate) or (is_target_uri and cls._is_system_uri(target_candidate)):
+            #     logger.debug(f"Skipping system link: {source} -> {target_candidate} ({predicate})")
+            #     skipped_system += 1
+            #     continue
 
             # 4) проверка валидности source/predicate
             if not cls._is_uri(source):
@@ -293,17 +293,17 @@ class CompetencyDAO:
                 total += 1
                 continue
 
-            # 5) формируем SPARQL для URI- или literal-объекта
-            if is_target_uri:
-                target = cls._ensure_uri(target_candidate, repo)
-                if not cls._is_uri(target):
-                    logger.warning(f"Skipping invalid target URI: {target} (must start with http:// or https://)")
-                    total += 1
-                    continue
+            ## 5) формируем SPARQL для URI- или literal-объекта
+            target_str = str(target_candidate).strip()
+
+            # если target — это URI, добавляем как ссылку
+            if target_str.startswith("http://") or target_str.startswith("https://"):
+                target = cls._ensure_uri(target_str, repo)
                 query = f"""INSERT DATA {{ <{source}> <{predicate}> <{target}>. }}"""
             else:
-                lit = target_literal.replace('"', '\\"') if target_literal is not None else ""
+                lit = (target_literal or target_str or "").replace('"', '\\"')
                 query = f"""INSERT DATA {{ <{source}> <{predicate}> "{lit}". }}"""
+
 
             logger.info(f"[SPARQL LINK INSERT] Sending query:\n{query}")
 

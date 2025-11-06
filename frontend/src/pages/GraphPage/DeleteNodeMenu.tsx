@@ -24,36 +24,6 @@ export const DeleteNodeMenu: React.FC<DeleteNodeMenuProps> = ({
     onUpdate(node, node.label);
     onClose();
   };
-  
-//   return (
-//     <div className={styles.modalOverlay} onClick = {onClose}>
-//         <div className = {styles.deleteModalContent} onClick={(e) => e.stopPropagation()}>
-//                 <div className={styles.formRow}>
-//                         {triples.length > 0 ? (
-//                         <ul className={styles.triplesListEditMode}>
-//                             {triples.map((triple, index) => (
-//                                 <div key={index} className={styles.tripleItemEditMode}>
-
-//                                     <span>{triple.subject}</span>
-//                                     <span>{triple.predicate}</span>
-//                                     <span>{triple.object}</span>
-                                    
-//                                     <button type="submit" className={styles.saveButton}>
-//                                         Сохранить
-//                                     </button>
-
-
-
-//                                 </div>
-//                             ))}
-//                         </ul>
-//                     ) : (
-//                         <p>Нет связанных триплетов</p>
-//                     )}
-//                 </div> 
-//         </div>
-//     </div>
-//   );
 
  return (
     <div className={styles.modalOverlay} onClick={onClose}>

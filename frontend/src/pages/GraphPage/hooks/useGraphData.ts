@@ -31,8 +31,8 @@ export const useGraphData = () => {
       if (data.nodes.length === 0 && data.links.length === 0) {
         console.log('Граф пуст - создаём начальный узел');
         const fallbackNode: OntologyNode = {
-          id: "http://example.org/competencies#StartNode",
-          label: "Начальный узел",
+          id: "http://example.org/competencies#Class",
+          label: "Class",
           type: "class",
           children: [],
         };

@@ -22,15 +22,12 @@ const triples = OntologyManager.getAllTriplesWithNode(currentNode.label);
   const handleSubmitNodeName = (e: React.FormEvent) => {
     e.preventDefault();
     if (editedLabel.trim() !== currentNode.label) {
-      onUpdate(currentNode, editedLabel); // Передаем текущий узел и новое название
+      onUpdate(currentNode, editedLabel); 
     }
-    //onClose();
+
   };
 
 const handleSubmitTriple = () => {
-    // e.preventDefault();
-    // const updatedTriple = ;
-    // onUpdate(updatedNode);
     onClose();
   };
   return (
