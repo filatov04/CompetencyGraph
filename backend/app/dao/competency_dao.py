@@ -13,6 +13,7 @@ from dependencies.config import Config
 logger = logging.getLogger(__name__)
 
 
+
 class CompetencyDAO:
     @classmethod
     def _get_prefixes(cls, config: Config) -> dict[str, str]:
@@ -49,14 +50,30 @@ class CompetencyDAO:
     @classmethod
     def _is_uri(cls, value: str) -> bool:
         return isinstance(value, str) and value.startswith(("http://", "https://"))
+    
+    @classmethod
+    def _sanitize_fragment(cls, value: str) -> str:
+        """Сделать безопасный хвост для URI из произвольной строки."""
+        v = value.strip()
+        # все пробельные символы -> подчёркивания
+        v = re.sub(r'\s+', '_', v)
+        # убираем совсем опасные символы для IRI
+        for ch in '<>"{}|^`':
+            v = v.replace(ch, '')
+        return v
 
+
+#NEW
     @classmethod
     def _ensure_uri(cls, value: str, repo: str) -> str:
         if cls._is_uri(value):
             return value
         if not value:
             return value
-        return f"http://example.org/{repo}#{value}"
+        safe = cls._sanitize_fragment(value)
+        return f"http://example.org/{repo}#{safe}"
+
+
 
     # ------------------------------------------------------
 
@@ -72,13 +89,15 @@ class CompetencyDAO:
         Для литералов добавляем признак literal=True и поля value/datatype/lang.
         """
         prefixes = cls._prefix_str(config)
+        RDFS_LABEL_URI = "http://www.w3.org/2000/01/rdf-schema#label"
 
         query = f"""
         {prefixes}
         SELECT ?s ?p ?o
         WHERE {{
             ?s ?p ?o .
-            # исключаем системные namespace для s/p/o (для o — только если это URI)
+
+            # исключаем системные namespace для субъекта
             FILTER (!STRSTARTS(STR(?s), "http://www.w3.org/1999/02/22-rdf-syntax-ns#"))
             FILTER (!STRSTARTS(STR(?s), "http://www.w3.org/2000/01/rdf-schema#"))
             FILTER (!STRSTARTS(STR(?s), "http://www.w3.org/2002/07/owl#"))
@@ -86,13 +105,20 @@ class CompetencyDAO:
             FILTER (!STRSTARTS(STR(?s), "http://www.w3.org/2001/XMLSchema#"))
             FILTER (!STRSTARTS(STR(?s), "http://proton.semanticweb.org/protonsys#"))
 
-            FILTER (!STRSTARTS(STR(?p), "http://www.w3.org/1999/02/22-rdf-syntax-ns#"))
-            FILTER (!STRSTARTS(STR(?p), "http://www.w3.org/2000/01/rdf-schema#"))
-            FILTER (!STRSTARTS(STR(?p), "http://www.w3.org/2002/07/owl#"))
-            FILTER (!STRSTARTS(STR(?p), "http://www.w3.org/XML/1998/namespace"))
-            FILTER (!STRSTARTS(STR(?p), "http://www.w3.org/2001/XMLSchema#"))
-            FILTER (!STRSTARTS(STR(?p), "http://proton.semanticweb.org/protonsys#"))
+            # исключаем системные предикаты, НО оставляем rdfs:label
+            FILTER (
+                !STRSTARTS(STR(?p), "http://www.w3.org/1999/02/22-rdf-syntax-ns#") &&
+                !STRSTARTS(STR(?p), "http://www.w3.org/2002/07/owl#") &&
+                !STRSTARTS(STR(?p), "http://www.w3.org/XML/1998/namespace") &&
+                !STRSTARTS(STR(?p), "http://www.w3.org/2001/XMLSchema#") &&
+                !STRSTARTS(STR(?p), "http://proton.semanticweb.org/protonsys#") &&
+                (
+                    !STRSTARTS(STR(?p), "http://www.w3.org/2000/01/rdf-schema#")
+                    || STR(?p) = "{RDFS_LABEL_URI}"
+                )
+            )
 
+            # исключаем системные URI-объекты
             FILTER (
                 !(isURI(?o) && (
                     STRSTARTS(STR(?o), "http://www.w3.org/1999/02/22-rdf-syntax-ns#") ||
@@ -111,24 +137,45 @@ class CompetencyDAO:
         except Exception as e:
             raise RuntimeError(f"Ошибка при получении графа: {str(e)}")
 
+        bindings = data.get("results", {}).get("bindings", [])
+        if not bindings:
+            return {"nodes": [], "links": []}
+
         nodes_dict: dict[str, dict] = {}
         links: list[dict] = []
         predicates_set = set()
 
-        # 1) собрать множество предикатов (чтобы не рисовать их как узлы)
-        for b in data["results"]["bindings"]:
+        RDFS_LABEL = RDFS_LABEL_URI
+
+        # 1) собираем множество предикатов
+        for b in bindings:
             predicates_set.add(b["p"]["value"])
 
-        # 2) пройтись и собрать узлы/связи, НЕ отбрасывая литералы
-        for b in data["results"]["bindings"]:
+        # 2) собираем узлы и связи
+        for b in bindings:
             s = b["s"]["value"]
             p = b["p"]["value"]
             o_val = b["o"]["value"]
-            o_type = b["o"]["type"]                       # 'uri' | 'literal' | 'bnode'
-            o_dt   = b["o"].get("datatype", None)         # для literal может быть
-            o_lang = b["o"].get("xml:lang", None)         # если языковый literal
+            o_type = b["o"]["type"]
+            o_dt   = b["o"].get("datatype")
+            o_lang = b["o"].get("xml:lang")
 
-            # субъект как узел (если сам не предикат)
+            # --- rdfs:label: берём как подпись узла ---
+            if p == RDFS_LABEL and o_type == "literal":
+                node = nodes_dict.get(s)
+                if not node:
+                    nodes_dict[s] = {
+                        "id": s,
+                        "label": o_val,   # ← здесь будет "объект", "как дела", "ттттт..." и т.п.
+                        "type": "class"
+                    }
+                else:
+                    node["label"] = o_val
+                # не добавляем это как ребро
+                continue
+            # -------------------------------------------
+
+            # субъект как узел (fallback, если нет rdfs:label)
             if s not in nodes_dict and s not in predicates_set:
                 nodes_dict[s] = {
                     "id": s,
@@ -137,33 +184,31 @@ class CompetencyDAO:
                 }
 
             if o_type == "uri":
-                # объект-URI как узел (если это не предикат)
+                # объект-URI как узел
                 if o_val not in nodes_dict and o_val not in predicates_set:
                     nodes_dict[o_val] = {
                         "id": o_val,
                         "label": o_val.split("#")[-1].split("/")[-1],
                         "type": "class"
                     }
-                # классическое ребро URI→URI
                 links.append({
                     "source": s,
                     "target": o_val,
                     "predicate": p
                 })
             elif o_type == "literal":
-                # сохраняем «атрибутное» ребро как URI→literal
+                # URI → literal как отдельное "атрибутное" ребро
                 lit_link = {
                     "source": s,
-                    "target": o_val,           # целевое значение (строка)
+                    "target": o_val,
                     "predicate": p,
-                    "literal": True            # флаг для фронта
+                    "literal": True
                 }
                 if o_dt:
                     lit_link["datatype"] = o_dt
                 if o_lang:
                     lit_link["lang"] = o_lang
                 links.append(lit_link)
-            # bnode можно добавить по желанию
 
         return {
             "nodes": list(nodes_dict.values()),
@@ -171,6 +216,7 @@ class CompetencyDAO:
         }
 
 
+    
     @classmethod
     def _is_system_uri(cls, uri: str) -> bool:
         system_namespaces = [

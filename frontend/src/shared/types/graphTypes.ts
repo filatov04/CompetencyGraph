@@ -4,4 +4,10 @@ interface RDFLink {
   predicate: string;
 }
 
-export type { RDFLink };
+interface RDFNode {
+    id: string;
+    label: string;
+    type: string;
+}
+
+export type { RDFLink, RDFNode };
