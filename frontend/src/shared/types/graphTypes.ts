@@ -3,5 +3,10 @@ interface RDFLink {
   target: string;
   predicate: string;
 }
+interface TripleSend {
+  subject: string,
+  predicate: string,
+  object: string,
+}
 
-export type { RDFLink };
+export type { RDFLink, TripleSend };

@@ -10,6 +10,9 @@ import { FileHTMLToString } from '../../features/FileHTMLToString/FileHTMLToStri
 import { getMarkup, postMarkup } from '../../shared/api/markupApi';
 import { getGraph } from '../../shared/api/graphApi';
 import type { CommentInterface } from '../../shared/types/markupTypes';
+import { postTriple } from '../../shared/api/generalApi';
+import type { TripleSend } from '../../shared/types/graphTypes';
+import OntologyManager from '../../shared/types/OntologyManager';
 
 const MOCK_SUBJECTS = ['Субъект 1', 'Субъект 2', 'Субъект 3', 'Другой Субъект'];
 const MOCK_PREDICATES = ['является частью', 'имеет свойство', 'относится к', 'создан из'];
@@ -218,10 +221,10 @@ const MarkupEditor: FC<MarkupEditorProps> = () => {
     });
   };
 
-  const handleSaveComment = (
+  const handleSaveComment = async (
     subject: string,
     predicate: string
-  ): void => {
+  ): Promise<void> => {
     if (!selection || !currentFilename) return;
 
     const objectText = textContainerRef.current?.textContent?.substring(selection.startIndex, selection.endIndex) || '';
@@ -243,6 +246,22 @@ const MarkupEditor: FC<MarkupEditorProps> = () => {
       console.log('Комментарии:', updated);
       return updated;
     });
+
+    
+
+    // Отправляем триплет на сервер
+    // const triple: TripleSend = {subject: `https://${subject}`, predicate, object: `https://${objectText}`};
+    // OntologyManager.generateNodeId(subject)
+    const triple: TripleSend = {subject: OntologyManager.generateNodeId(subject), predicate, object: OntologyManager.generateNodeId(objectText)};
+    try {
+      await postTriple(triple);
+      console.log('Триплет успешно отправлен:', triple);
+    } catch (error) {
+      console.error('Ошибка при отправке триплета:', error);
+      // TODO
+      // Можно добавить уведомление пользователю об ошибке
+      alert("Триплет не удалось сохранить")
+    }
 
     setSelection(null);
     window.getSelection()?.removeAllRanges();

@@ -1,4 +1,5 @@
 import { api } from './customAxiosInstance';
+import type { TripleSend } from '../types/graphTypes';
 
 const getAllObjects = async () => {
   return api.get<string[]>('/objects');
@@ -20,4 +21,8 @@ const postObject = async (object: string) => {
   return api.post('/objects', { object });
 }
 
-export { getAllObjects, getAllPredicates, getAllSubjects, postPredicate, postObject };
+const postTriple = async (triple: TripleSend) => {
+  return api.post('/competencies/triple', {subject: triple.subject, predicate: triple.predicate, object: triple.object});
+}
+
+export { getAllObjects, getAllPredicates, getAllSubjects, postPredicate, postObject, postTriple };
