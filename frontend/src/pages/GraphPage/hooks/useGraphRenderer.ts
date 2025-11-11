@@ -17,8 +17,6 @@ export const useGraphRenderer = (
 ) => {
   const buildTree = useCallback((nodes: OntologyNode[], links: RDFLink[]): OntologyNode | undefined => {
     console.log('buildTree: Building tree with', nodes.length, 'nodes and', links.length, 'links');
-    
-    // Создаем копии узлов без циклических ссылок
     const nodeMap = new Map<string, OntologyNode>();
     nodes.forEach(node => {
       console.log('buildTree: Creating node map entry for', node.id, node.label);
@@ -30,24 +28,24 @@ export const useGraphRenderer = (
       });
     });
 
-    // Отслеживаем добавленные связи для предотвращения дублирования и циклов
     const addedChildren = new Set<string>();
     
     links.forEach(link => {
       const parent = nodeMap.get(link.source);
       const child = nodeMap.get(link.target);
-      
-      // Проверяем что parent и child существуют и связь еще не добавлена
+
       const linkKey = `${link.source}->${link.target}`;
       if (parent && child && !addedChildren.has(linkKey)) {
-        // Используем ссылку на оригинальный узел, чтобы сохранить всех его детей
         parent.children!.push(child);
         addedChildren.add(linkKey);
       }
     });
+const rootNodes = nodes.filter(
+  node =>
+    node.id === "http://example.org/root" || 
+    (!links.some(l => l.target === node.id) && node.label === "Корень")
+);
 
-    // Находим корневые узлы (те, которые не являются целью ни одной связи)
-    const rootNodes = nodes.filter(node => !links.some(l => l.target === node.id));
     
     if (rootNodes.length === 0) {
       console.warn('No root nodes found, possible cyclic graph');
@@ -55,8 +53,6 @@ export const useGraphRenderer = (
       const allNodes = Array.from(nodeMap.values());
       console.log('buildTree: Virtual root will have', allNodes.length, 'children');
       console.log('buildTree: Children labels:', allNodes.map(n => n.label));
-      // Если нет корневых узлов (циклический граф), создаем виртуальный корень
-      // и добавляем все узлы как его детей
       return {
         id: "virtual_root",
         label: "Граф",
@@ -80,13 +76,10 @@ export const useGraphRenderer = (
   }, []);
 
   const renderTree = useCallback(() => {
-    // Защита от пустых данных
     if (!nodes.length) {
       console.log('No nodes to render');
       return;
     }
-
-    // Защита от слишком больших графов
     const MAX_NODES = 1000;
     if (nodes.length > MAX_NODES) {
       console.error(`Graph too large: ${nodes.length} nodes (max ${MAX_NODES})`);
@@ -125,8 +118,6 @@ export const useGraphRenderer = (
       .separation(() => 1.5);
 
     treeLayout(root);
-
-    // Стиль кнопок
     const buttonStyle = {
       width: 160,
       height: 40,
@@ -136,8 +127,6 @@ export const useGraphRenderer = (
       stroke: "#000000ff",
       strokeWidth: 1
     };
-
-    // Создание кнопок
     const createButton = (yPos: number, text: string, onClick: () => void, disabled = false) => {
       const button = svg.append('g')
         .attr("transform", `translate(20,${yPos})`)
@@ -179,13 +168,22 @@ export const useGraphRenderer = (
         textElement.text(text);
       }
     };
-
-    // Добавление кнопок
     createButton(height - 80, "Создать новый", () => setShowMenu(true));
     createButton(height - 130, "Сохранить", handleSaveGraph, isSaving);
     createButton(height - 180, "Загрузить из файла", handleUploadClick);
+    createButton(height - 230, "Скачать JSON", () => {
+      const data = { nodes, links };
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
 
-    // Добавление тени для кнопок
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "graph.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
     const defs = svg.append("defs");
     const filter = defs.append("filter")
       .attr("id", "button-shadow")
@@ -205,8 +203,6 @@ export const useGraphRenderer = (
     const feMerge = filter.append("feMerge");
     feMerge.append("feMergeNode").attr("in", "offsetBlur");
     feMerge.append("feMergeNode").attr("in", "SourceGraphic");
-
-    // Отрисовка связей
     g.selectAll(".link")
       .data(root.links() as d3.HierarchyPointLink<OntologyNode>[])
       .enter()
@@ -228,11 +224,7 @@ export const useGraphRenderer = (
 
         if (linkData) {
           const label = linkData.predicate.split(/[#\/]/).pop() || linkData.predicate;
-
-          // Создаем группу для метки
           const labelGroup = g.append("g");
-
-          // Создаем временный текст для измерения размера
           const tempText = labelGroup.append("text")
             .attr("class", styles.linkLabel)
             .attr("x", midX)
@@ -240,12 +232,8 @@ export const useGraphRenderer = (
             .attr("text-anchor", "middle")
             .attr("dy", "-0.5em")
             .text(label);
-
-          // Получаем размер текста
           const bbox = (tempText.node() as SVGTextElement).getBBox();
           const padding = 4;
-
-          // Добавляем фоновый прямоугольник ПЕРЕД текстом
           labelGroup.insert("rect", "text")
             .attr("class", styles.linkLabelBackground)
             .attr("x", bbox.x - padding)
@@ -254,8 +242,6 @@ export const useGraphRenderer = (
             .attr("height", bbox.height + padding * 2);
         }
       });
-
-    // Отрисовка узлов
     const descendants = root.descendants();
     console.log('renderTree: Rendering', descendants.length, 'node elements');
     console.log('renderTree: Node labels to render:', descendants.map(d => d.data.label));
@@ -290,8 +276,6 @@ export const useGraphRenderer = (
         ? `${d.data.label.substring(0, 20)}...`
         : d.data.label
       );
-
-    // Добавление масштабирования
     const zoom = d3.zoom<any, any>()
       .scaleExtent([0.3, 3])
       .on("zoom", (event) => {
@@ -303,7 +287,6 @@ export const useGraphRenderer = (
     
     } catch (error) {
       console.error('Error rendering tree:', error);
-      // Очищаем SVG в случае ошибки
       const svg = d3.select(svgRef.current);
       svg.selectAll("*").remove();
     }

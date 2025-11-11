@@ -12,7 +12,7 @@ export const useGraphActions = (
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSaveGraph = useCallback(async () => {
-    if (isSaving) return; // Предотвращаем двойное нажатие
+    if (isSaving) return; 
 
     setIsSaving(true);
     try {
@@ -72,8 +72,6 @@ export const useGraphActions = (
         return false;
       }
     }
-    
-    // Преобразуем предикат в URI перед добавлением связи
     const predicateUri = PredicateManager.generatePredicateUri(predicateLabel);
     const linkAdded = OntologyManager.addLink(subject.id, object.id, predicateUri);
     if (linkAdded) {

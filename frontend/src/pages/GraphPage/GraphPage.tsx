@@ -13,6 +13,8 @@ import { useGraphActions } from "./hooks/useGraphActions";
 import { useGraphRenderer } from "./hooks/useGraphRenderer";
 import { useFileUpload } from "./hooks/useFileUpload";
 
+
+
 const GraphPage: React.FC = () => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -176,7 +178,7 @@ const GraphPage: React.FC = () => {
           style={{ opacity: (isLoading || loadError) ? 0.3 : 1 }}
         />
       </div>
-
+     
       {/* Меню создания нового триплета */}
       {showMenu && (
         <NewTripleMenu

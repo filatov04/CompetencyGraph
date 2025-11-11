@@ -1,55 +1,75 @@
 import { useCallback, type RefObject } from 'react';
 import OntologyManager, { type NodeType } from '../../../shared/types/OntologyManager';
+import { postGraph, type GraphData } from '../../../shared/api/graphApi';
 
 export const useFileUpload = (
   fileInputRef: RefObject<HTMLInputElement | null>,
   updateDataFromManager: () => void
 ) => {
-  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+
+    reader.onload = async (e) => {
       try {
         const content = e.target?.result as string;
         const jsonData = JSON.parse(content);
 
-        // Валидация структуры файла
         if (!jsonData.nodes || !jsonData.links) {
-          alert("Неверный формат файла. Ожидаются поля nodes и links.");
+          alert("Неверный формат файла. Ожидаются поля 'nodes' и 'links'.");
           return;
         }
 
-        // Очищаем текущие данные
+        console.log('%c[useFileUpload] Загружаю файл...', 'color: cyan; font-weight: bold');
         OntologyManager.clear();
 
-        // Загружаем новые данные
         jsonData.nodes.forEach((node: any) => {
+          let normalizedType: NodeType = 'literal';
+          if (node.type?.includes('Class')) normalizedType = 'class';
+          else if (node.type?.includes('Property')) normalizedType = 'property';
+
           OntologyManager.addNode({
             id: node.id,
             label: node.label,
-            type: node.type as NodeType,
+            type: normalizedType,
             children: []
           });
         });
-
         jsonData.links.forEach((link: any) => {
           OntologyManager.addLink(link.source, link.target, link.predicate);
         });
+        const allNodes = OntologyManager.getAllNodes();
+        const allLinks = OntologyManager.getAllLinks();
+        console.log('%c[useFileUpload] Загружено в OntologyManager:', 'color: lime; font-weight: bold', {
+          nodes: allNodes.length,
+          links: allLinks.length
+        });
 
         updateDataFromManager();
-        alert("Граф успешно загружен из файла!");
 
-        // Очищаем input для возможности загрузки того же файла снова
+        const nodesToSave = allNodes.map(({ children, ...rest }) => rest);
+        const graphData: GraphData = {
+          nodes: nodesToSave,
+          links: allLinks,
+        };
+
+        console.log('%c[useFileUpload] Отправляю на сервер:', 'color: orange; font-weight: bold', graphData);
+        const response = await postGraph(graphData);
+        console.log('%c[useFileUpload] Ответ сервера:', 'color: lightgreen; font-weight: bold', response);
+
+        alert('Граф успешно загружен из файла и сохранён на сервере!');
         if (fileInputRef.current) {
-          fileInputRef.current.value = "";
+          fileInputRef.current.value = '';
         }
-      } catch (error) {
-        console.error("Ошибка при чтении файла:", error);
-        alert("Не удалось прочитать файл. Проверьте формат JSON.");
+      } catch (error: any) {
+        console.error('Ошибка при чтении или сохранении файла:', error);
+        const msg = error?.response?.data?.detail || error?.message || 'Неизвестная ошибка';
+        alert(`Не удалось обработать или сохранить файл: ${msg}`);
       }
     };
+
     reader.readAsText(file);
   }, [updateDataFromManager, fileInputRef]);
 
@@ -61,7 +81,6 @@ export const useFileUpload = (
 
   return {
     handleFileUpload,
-    handleUploadClick
+    handleUploadClick,
   };
 };
-

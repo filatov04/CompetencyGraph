@@ -9,4 +9,10 @@ interface TripleSend {
   object: string,
 }
 
-export type { RDFLink, TripleSend };
+interface RDFNode {
+    id: string;
+    label: string;
+    type: string;
+}
+
+export type { RDFLink, RDFNode, TripleSend };

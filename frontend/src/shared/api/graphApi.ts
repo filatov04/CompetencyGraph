@@ -1,19 +1,26 @@
 import { api } from './customAxiosInstance';
 import type { OntologyNode } from '../types/OntologyManager';
-import type { RDFLink } from '../types/graphTypes';
+import type { RDFLink} from '../types/graphTypes';
 
 interface GraphData {
   nodes: Omit<OntologyNode, 'children'>[];
   links: RDFLink[];
 }
 
+
 const postGraph = async (graphData: GraphData) => {
   return api.post('/competencies/graph', graphData);
 }
+
+const deleteNode = async (nodeId: string) => {
+  return api.delete(`/competencies/node`, {
+    params: { node_id: nodeId },
+  });
+};
 
 const getGraph = async () => {
   return api.get<GraphData>('/competencies/graph');
 }
 
-export { postGraph, getGraph };
+export { postGraph, getGraph, deleteNode };
 export type { GraphData };

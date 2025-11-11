@@ -6,6 +6,8 @@ import PredicateManager from '../../shared/types/PredicateManager';
 import { EditNode } from './EditNode';
 import { DeleteNodeMenu } from './DeleteNodeMenu';
 import NodeVersionInfo from './NodeVersionInfo';
+import { deleteNode } from '../../shared/api/graphApi';
+
 
 const NodePopup: React.FC<{
   node: OntologyNode;
@@ -13,7 +15,7 @@ const NodePopup: React.FC<{
   position: { x: number; y: number };
   onUpdate: () => void;
   setSelectedNode: (node: OntologyNode) => void;
-}> = ({ node, position, onUpdate, setSelectedNode  }) => {
+}> = ({node, position, onUpdate, setSelectedNode}) => {
     const [showNewTripleMenu, setShowNewTripleMenu] = useState(false);
     const [showEditNoteMenu, setEditNodeMenu] = useState(false);
     const [showVersionInfo, setShowVersionInfo] = useState(false);
@@ -86,9 +88,7 @@ const NodePopup: React.FC<{
     console.log(OntologyManager.getAllLinks());
 
     return success;
-
   }
-
     const triples = OntologyManager.getAllTriplesWithNode(node.label);
 
     return (
@@ -180,14 +180,31 @@ const NodePopup: React.FC<{
             )}
 
             {nodeToDelete && (
-            <DeleteNodeMenu
-                onClose={() => setNodeToDelete(null)}
-                triples={OntologyManager.getAllTriplesWithNode(nodeToDelete.label)}
-                node={nodeToDelete}
-                onDeleteConfirm={(id) => OntologyManager.deleteNode(id)}
-                onUpdate={onUpdate}
-            />
-            )}
+                <DeleteNodeMenu
+                    onClose={() => setNodeToDelete(null)}
+                    triples={OntologyManager.getAllTriplesWithNode(nodeToDelete.label)}
+                    node={nodeToDelete}
+                    onDeleteConfirm={async (id) => {
+                    try {
+                        const response = await deleteNode(id);
+                        if (response.status === 200) {
+                            OntologyManager.deleteNode(id);
+                            onUpdate();
+                        }
+                        OntologyManager.deleteNode(id); // ✅ локальное удаление из памяти
+                        onUpdate(); // ✅ обновляем граф
+                        alert('Узел успешно удалён из базы данных');
+                    } catch (error) {
+                        console.error('Ошибка при удалении узла:', error);
+                        alert('Не удалось удалить узел из базы данных');
+                    } finally {
+                        setNodeToDelete(null); // ✅ закрываем окно после удаления
+                    }
+                    }}
+                    onUpdate={onUpdate}
+                />
+                )}
+
 
             {showVersionInfo && (
                 <NodeVersionInfo
