@@ -163,21 +163,20 @@ public getAvailablePredicates(): string[] {
     return this.getAllNodes().filter(node => node.type !== 'property');
   }
 
-  public generateNodeId(label: string): string {
-    // Генерируем валидный URI для RDF
+public generateNodeId(label: string): string {
     const namespace = 'http://example.org/competencies#';
-    const baseId = label.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '_');
+    // Просто заменяем пробелы, остальные символы оставляем как есть
+    const baseId = label.replace(/\s+/g, '_');
     let fullUri = namespace + baseId;
     let counter = 1;
     
     while (this.nodes.has(fullUri)) {
-      fullUri = `${namespace}${baseId}_${counter}`;
-      counter++;
+        fullUri = `${namespace}${baseId}_${counter}`;
+        counter++;
     }
     
     return fullUri;
-  }
-
+}
   public getPrefixFromUri(uri: string): string {
     const knownPrefixes = {
       'http://www.w3.org/1999/02/22-rdf-syntax-ns#': 'rdf:',

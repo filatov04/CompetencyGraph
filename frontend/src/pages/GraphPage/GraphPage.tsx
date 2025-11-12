@@ -126,6 +126,7 @@ const GraphPage: React.FC = () => {
 
   // Обработчик добавления объекта
   const handleAddObject = useCallback((objectLabel: string) => {
+    console.log("Добавляем узел: ", objectLabel)
     const newNode = {
       id: OntologyManager.generateNodeId(objectLabel),  // Генерируем валидный URI
       label: objectLabel,

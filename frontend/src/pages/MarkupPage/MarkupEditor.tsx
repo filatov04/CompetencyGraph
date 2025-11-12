@@ -221,52 +221,80 @@ const MarkupEditor: FC<MarkupEditorProps> = () => {
     });
   };
 
-  const handleSaveComment = async (
-    subject: string,
-    predicate: string
-  ): Promise<void> => {
-    if (!selection || !currentFilename) return;
+const handleSaveComment = async (
+  subject: string,
+  predicate: string
+): Promise<void> => {
+  if (!selection || !currentFilename) return;
 
-    const objectText = textContainerRef.current?.textContent?.substring(selection.startIndex, selection.endIndex) || '';
+  const objectText = textContainerRef.current?.textContent?.substring(selection.startIndex, selection.endIndex) || '';
 
-    const newComment: CommentInterface = {
-      id: Date.now(), // Временный ID, будет заменен бэкендом
-      startIndex: selection.startIndex,
-      endIndex: selection.endIndex,
-      subject,
-      predicate,
-      object: objectText,
-      filename: currentFilename,
-      createdAt: new Date().toISOString(),
-      author: '', // Автоматически заполнится на бэкенде из JWT токена
-    };
-
-    setComments((prevComments) => {
-      const updated = [...prevComments, newComment].sort((a, b) => a.startIndex - b.startIndex);
-      console.log('Комментарии:', updated);
-      return updated;
-    });
-
-    
-
-    // Отправляем триплет на сервер
-    // const triple: TripleSend = {subject: `https://${subject}`, predicate, object: `https://${objectText}`};
-    // OntologyManager.generateNodeId(subject)
-    const triple: TripleSend = {subject: OntologyManager.generateNodeId(subject), predicate, object: OntologyManager.generateNodeId(objectText)};
-    try {
-      await postTriple(triple);
-      console.log('Триплет успешно отправлен:', triple);
-    } catch (error) {
-      console.error('Ошибка при отправке триплета:', error);
-      // TODO
-      // Можно добавить уведомление пользователю об ошибке
-      alert("Триплет не удалось сохранить")
-    }
-
-    setSelection(null);
-    window.getSelection()?.removeAllRanges();
+  const newComment: CommentInterface = {
+    id: Date.now(),
+    startIndex: selection.startIndex,
+    endIndex: selection.endIndex,
+    subject,
+    predicate,
+    object: objectText,
+    filename: currentFilename,
+    createdAt: new Date().toISOString(),
+    author: '',
   };
 
+  setComments((prevComments) => {
+    const updated = [...prevComments, newComment].sort((a, b) => a.startIndex - b.startIndex);
+    console.log('Комментарии:', updated);
+    return updated;
+  });
+
+  // 1. Иерархическая связь: Субъект -> Предикат -> Объект
+  const triple1: TripleSend = {
+    subject: OntologyManager.generateNodeId(subject),
+    predicate, 
+    object: OntologyManager.generateNodeId(objectText)
+  };
+  
+  try {
+    await postTriple(triple1);
+    console.log('Первый триплет (иерархия) успешно отправлен:', triple1);
+  } catch (error) {
+    console.error('Ошибка при отправке первого триплета:', error);
+    alert("Первый триплет не удалось сохранить")
+  }
+
+  // 2. Тип объекта: Объект -> rdf:type -> rdfs:Class
+  const triple2: TripleSend = {
+    subject: OntologyManager.generateNodeId(objectText), 
+    predicate: "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+    object: "http://www.w3.org/2000/01/rdf-schema#Class"
+  };
+
+  try {
+    await postTriple(triple2);
+    console.log('Второй триплет (тип) успешно отправлен:', triple2);
+  } catch (error) {
+    console.error('Ошибка при отправке второго триплета:', error);
+    alert("Второй триплет не удалось сохранить");
+  }
+
+  // 3. Лейбл объекта: Объект -> rdfs:label -> "название"
+  const triple3: TripleSend = {
+    subject: OntologyManager.generateNodeId(objectText), 
+    predicate: "http://www.w3.org/2000/01/rdf-schema#label",
+    object: `"${objectText}"`
+  };
+
+  try {
+    await postTriple(triple3);
+    console.log('Третий триплет (лейбл) успешно отправлен:', triple3);
+  } catch (error) {
+    console.error('Ошибка при отправке третьего триплета:', error);
+    alert("Третий триплет не удалось сохранить");
+  }
+
+  setSelection(null);
+  window.getSelection()?.removeAllRanges();
+};
   const handleSaveMarkup = async () => {
     if (!currentFilename) {
       alert('Сначала загрузите файл');

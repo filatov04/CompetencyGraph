@@ -294,4 +294,3 @@ const rootNodes = nodes.filter(
 
   return { renderTree };
 };
-

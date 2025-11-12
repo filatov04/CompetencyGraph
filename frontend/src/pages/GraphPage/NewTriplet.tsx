@@ -94,8 +94,23 @@ export const NewTripleMenu: React.FC<NewTripleMenuProps> = ({
     try {
       const addedNode = onAddObject(trimmed);
       if (!addedNode) throw new Error('Не удалось добавить узел');
+      
+      //console.log('Original label:', addedNode.label); // Отладка
 
-      const shortName = addedNode.label.split(/[#/]/).pop()!;
+      const getShortName = (uri: string): string => {
+        // Если это не URI, а просто текст - возвращаем как есть
+        if (!uri.includes('#') && !uri.includes('/')) {
+          return uri;
+        }
+        // Иначе извлекаем часть после # или /
+        const parts = uri.split(/[#/]/);
+        return parts[parts.length - 1];
+      };
+
+      const shortName = getShortName(addedNode.label);
+
+      //console.log('Short name:', shortName); // Отладка
+
       setNewObject('');
       setError('');
       setSelectedObject(shortName);
