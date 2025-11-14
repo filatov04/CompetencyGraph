@@ -107,7 +107,10 @@ const MarkupEditor: FC<MarkupEditorProps> = () => {
   const [subjects, setSubjects] = useState<string[]>(MOCK_SUBJECTS);
   const [predicates, setPredicates] = useState<string[]>(MOCK_PREDICATES);
   const [currentFilename, setCurrentFilename] = useState<string>('');
+  const [loadedGraphNodes, setLoadedGraphNodes] = useState<any[]>([]);
+  const [loadedGraphLinks, setLoadedGraphLinks] = useState<any[]>([]);
   const textContainerRef = useRef<HTMLDivElement>(null);
+  const graphFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileRead = async (content: string, filename?: string) => {
     const parser = new DOMParser();
@@ -156,6 +159,152 @@ const MarkupEditor: FC<MarkupEditorProps> = () => {
         console.error('Ошибка при загрузке разметки:', error);
       }
     }
+  };
+
+  const handleGraphFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const content = e.target?.result as string;
+        const jsonData = JSON.parse(content);
+
+        if (!jsonData.nodes || !jsonData.links) {
+          alert("Неверный формат файла. Ожидаются поля 'nodes' и 'links'.");
+          return;
+        }
+
+        // Извлекаем субъекты из nodes (по полю label)
+        const loadedSubjects = Array.isArray(jsonData.nodes)
+          ? jsonData.nodes.map((n: any) => n.label).filter(Boolean)
+          : [];
+
+        // Извлекаем предикаты из links (по полю predicate, убираем дубликаты)
+        const loadedPredicates = Array.isArray(jsonData.links)
+          ? Array.from(new Set(jsonData.links.map((l: any) => l.predicate).filter(Boolean))) as string[]
+          : [];
+
+        // Обновляем состояния
+        setSubjects(loadedSubjects.length > 0 ? loadedSubjects : MOCK_SUBJECTS);
+        setPredicates(loadedPredicates.length > 0 ? loadedPredicates : MOCK_PREDICATES);
+        
+        // Сохраняем загруженный граф для последующего экспорта
+        setLoadedGraphNodes(jsonData.nodes || []);
+        setLoadedGraphLinks(jsonData.links || []);
+
+        console.log('Загружены субъекты:', loadedSubjects);
+        console.log('Загружены предикаты:', loadedPredicates);
+
+        alert(`Граф успешно загружен!\nСубъектов: ${loadedSubjects.length}\nПредикатов: ${loadedPredicates.length}`);
+
+        // Очищаем input
+        if (graphFileInputRef.current) {
+          graphFileInputRef.current.value = '';
+        }
+      } catch (error: any) {
+        console.error('Ошибка при чтении файла графа:', error);
+        alert(`Не удалось обработать файл: ${error.message || 'Неизвестная ошибка'}`);
+      }
+    };
+
+    reader.readAsText(file);
+  };
+
+  const handleGraphUploadClick = () => {
+    if (graphFileInputRef.current) {
+      graphFileInputRef.current.click();
+    }
+  };
+
+  const handleExportGraph = () => {
+    if (comments.length === 0) {
+      alert('Нет комментариев для экспорта');
+      return;
+    }
+
+    // Создаем копии загруженных данных
+    const exportNodes = [...loadedGraphNodes];
+    const exportLinks = [...loadedGraphLinks];
+
+    // Множества для отслеживания уже добавленных узлов и связей
+    const existingNodeIds = new Set(exportNodes.map((n: any) => n.id));
+    const existingNodeLabels = new Set(exportNodes.map((n: any) => n.label));
+
+    // Обрабатываем каждый комментарий
+    comments.forEach((comment) => {
+      // Генерируем ID для субъекта, если его еще нет
+      let subjectId = exportNodes.find((n: any) => n.label === comment.subject)?.id;
+      if (!subjectId) {
+        subjectId = OntologyManager.generateNodeId(comment.subject);
+        if (!existingNodeIds.has(subjectId)) {
+          exportNodes.push({
+            id: subjectId,
+            label: comment.subject,
+            type: 'class'
+          });
+          existingNodeIds.add(subjectId);
+          existingNodeLabels.add(comment.subject);
+        }
+      }
+
+      // Генерируем ID для объекта (текст выделения)
+      let objectId = exportNodes.find((n: any) => n.label === comment.object)?.id;
+      if (!objectId) {
+        objectId = OntologyManager.generateNodeId(comment.object);
+        if (!existingNodeIds.has(objectId)) {
+          exportNodes.push({
+            id: objectId,
+            label: comment.object,
+            type: 'class'
+          });
+          existingNodeIds.add(objectId);
+          existingNodeLabels.add(comment.object);
+        }
+      }
+
+      // Находим или создаем ID предиката
+      let predicateId = exportLinks.find((l: any) => l.predicate === comment.predicate)?.predicate;
+      if (!predicateId) {
+        // Предикат может быть как URI, так и label
+        const predicateNode = exportNodes.find((n: any) => n.label === comment.predicate);
+        predicateId = predicateNode?.id || comment.predicate;
+      }
+
+      // Добавляем связь субъект -> предикат -> объект
+      const linkExists = exportLinks.some(
+        (l: any) => l.source === subjectId && l.target === objectId && l.predicate === predicateId
+      );
+
+      if (!linkExists) {
+        exportLinks.push({
+          source: subjectId,
+          target: objectId,
+          predicate: predicateId
+        });
+      }
+    });
+
+    // Создаем JSON для экспорта
+    const exportData = {
+      nodes: exportNodes,
+      links: exportLinks
+    };
+
+    // Скачиваем файл
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `graph_with_markup_${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    console.log('Экспортированный граф:', exportData);
+    alert(`Граф успешно экспортирован!\nУзлов: ${exportNodes.length}\nСвязей: ${exportLinks.length}`);
   };
 
   const handleMouseUp = (): void => {
@@ -247,50 +396,50 @@ const handleSaveComment = async (
     return updated;
   });
 
-  // 1. Иерархическая связь: Субъект -> Предикат -> Объект
-  const triple1: TripleSend = {
-    subject: OntologyManager.generateNodeId(subject),
-    predicate, 
-    object: OntologyManager.generateNodeId(objectText)
-  };
+  // // 1. Иерархическая связь: Субъект -> Предикат -> Объект
+  // const triple1: TripleSend = {
+  //   subject: OntologyManager.generateNodeId(subject),
+  //   predicate, 
+  //   object: OntologyManager.generateNodeId(objectText)
+  // };
   
-  try {
-    await postTriple(triple1);
-    console.log('Первый триплет (иерархия) успешно отправлен:', triple1);
-  } catch (error) {
-    console.error('Ошибка при отправке первого триплета:', error);
-    alert("Первый триплет не удалось сохранить")
-  }
+  // try {
+  //   await postTriple(triple1);
+  //   console.log('Первый триплет (иерархия) успешно отправлен:', triple1);
+  // } catch (error) {
+  //   console.error('Ошибка при отправке первого триплета:', error);
+  //   alert("Первый триплет не удалось сохранить")
+  // }
 
-  // 2. Тип объекта: Объект -> rdf:type -> rdfs:Class
-  const triple2: TripleSend = {
-    subject: OntologyManager.generateNodeId(objectText), 
-    predicate: "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
-    object: "http://www.w3.org/2000/01/rdf-schema#Class"
-  };
+  // // 2. Тип объекта: Объект -> rdf:type -> rdfs:Class
+  // const triple2: TripleSend = {
+  //   subject: OntologyManager.generateNodeId(objectText), 
+  //   predicate: "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
+  //   object: "http://www.w3.org/2000/01/rdf-schema#Class"
+  // };
 
-  try {
-    await postTriple(triple2);
-    console.log('Второй триплет (тип) успешно отправлен:', triple2);
-  } catch (error) {
-    console.error('Ошибка при отправке второго триплета:', error);
-    alert("Второй триплет не удалось сохранить");
-  }
+  // try {
+  //   await postTriple(triple2);
+  //   console.log('Второй триплет (тип) успешно отправлен:', triple2);
+  // } catch (error) {
+  //   console.error('Ошибка при отправке второго триплета:', error);
+  //   alert("Второй триплет не удалось сохранить");
+  // }
 
-  // 3. Лейбл объекта: Объект -> rdfs:label -> "название"
-  const triple3: TripleSend = {
-    subject: OntologyManager.generateNodeId(objectText), 
-    predicate: "http://www.w3.org/2000/01/rdf-schema#label",
-    object: `"${objectText}"`
-  };
+  // // 3. Лейбл объекта: Объект -> rdfs:label -> "название"
+  // const triple3: TripleSend = {
+  //   subject: OntologyManager.generateNodeId(objectText), 
+  //   predicate: "http://www.w3.org/2000/01/rdf-schema#label",
+  //   object: `"${objectText}"`
+  // };
 
-  try {
-    await postTriple(triple3);
-    console.log('Третий триплет (лейбл) успешно отправлен:', triple3);
-  } catch (error) {
-    console.error('Ошибка при отправке третьего триплета:', error);
-    alert("Третий триплет не удалось сохранить");
-  }
+  // try {
+  //   await postTriple(triple3);
+  //   console.log('Третий триплет (лейбл) успешно отправлен:', triple3);
+  // } catch (error) {
+  //   console.error('Ошибка при отправке третьего триплета:', error);
+  //   alert("Третий триплет не удалось сохранить");
+  // }
 
   setSelection(null);
   window.getSelection()?.removeAllRanges();
@@ -491,37 +640,92 @@ const handleSaveComment = async (
 
   return (
     <div className={styles.commentableContainer}>
+      <input
+        type="file"
+        ref={graphFileInputRef}
+        onChange={handleGraphFileUpload}
+        accept=".json,application/json"
+        style={{ display: 'none' }}
+      />
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, marginTop: 16 }}>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}>
           <FileHTMLToString onFileRead={handleFileRead} />
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
           <button
-            onClick={handleSaveMarkup}
-            disabled={isSaving}
+            onClick={handleGraphUploadClick}
             style={{
-              width: 48,
-              height: 48,
-              borderRadius: 12,
-              background: '#27ae60',
+              padding: '8px 16px',
+              borderRadius: 8,
+              background: '#3498db',
               color: 'white',
               border: 'none',
-              fontSize: 24,
-              fontWeight: 'bold',
-              cursor: isSaving ? 'not-allowed' : 'pointer',
-              marginRight: 0,
-              position: 'relative',
+              fontSize: 14,
+              cursor: 'pointer',
               transition: 'background 0.2s',
             }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#2980b9')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#3498db')}
           >
-            {isSaving ? (
-              <span className={styles.loader} />
-            ) : (
-              '💾'
-            )}
+            📊 Загрузить граф (субъекты/предикаты)
           </button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={handleSaveMarkup}
+              disabled={isSaving}
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 12,
+                background: '#27ae60',
+                color: 'white',
+                border: 'none',
+                fontSize: 24,
+                fontWeight: 'bold',
+                cursor: isSaving ? 'not-allowed' : 'pointer',
+                position: 'relative',
+                transition: 'background 0.2s',
+              }}
+              title="Сохранить разметку"
+            >
+              {isSaving ? (
+                <span className={styles.loader} />
+              ) : (
+                '💾'
+              )}
+            </button>
+            <button
+              onClick={handleExportGraph}
+              disabled={comments.length === 0}
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 12,
+                background: comments.length === 0 ? '#95a5a6' : '#9b59b6',
+                color: 'white',
+                border: 'none',
+                fontSize: 24,
+                fontWeight: 'bold',
+                cursor: comments.length === 0 ? 'not-allowed' : 'pointer',
+                transition: 'background 0.2s',
+              }}
+              title="Скачать граф с комментариями"
+              onMouseEnter={(e) => {
+                if (comments.length > 0) {
+                  e.currentTarget.style.background = '#8e44ad';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (comments.length > 0) {
+                  e.currentTarget.style.background = '#9b59b6';
+                }
+              }}
+            >
+              📥
+            </button>
+          </div>
           {saveSuccess && (
-            <span style={{ color: '#27ae60', fontWeight: 'bold', fontSize: 18, marginTop: 8 }}>✔ Разметка успешно сохранена</span>
+            <span style={{ color: '#27ae60', fontWeight: 'bold', fontSize: 18 }}>✔ Разметка успешно сохранена</span>
           )}
         </div>
       </div>
