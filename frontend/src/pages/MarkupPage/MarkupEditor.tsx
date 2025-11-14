@@ -9,8 +9,6 @@ import styles from './MarkupEditor.module.css';
 import { FileHTMLToString } from '../../features/FileHTMLToString/FileHTMLToString';
 import { getMarkup, postMarkup } from '../../shared/api/markupApi';
 import type { CommentInterface } from '../../shared/types/markupTypes';
-// import { postTriple } from '../../shared/api/generalApi';
-// import type { TripleSend } from '../../shared/types/graphTypes';
 import OntologyManager from '../../shared/types/OntologyManager';
 
 const MOCK_SUBJECTS = ['Субъект 1', 'Субъект 2', 'Субъект 3', 'Другой Субъект'];
@@ -378,51 +376,6 @@ const handleSaveComment = async (
     console.log('Комментарии:', updated);
     return updated;
   });
-
-  // // 1. Иерархическая связь: Субъект -> Предикат -> Объект
-  // const triple1: TripleSend = {
-  //   subject: OntologyManager.generateNodeId(subject),
-  //   predicate, 
-  //   object: OntologyManager.generateNodeId(objectText)
-  // };
-  
-  // try {
-  //   await postTriple(triple1);
-  //   console.log('Первый триплет (иерархия) успешно отправлен:', triple1);
-  // } catch (error) {
-  //   console.error('Ошибка при отправке первого триплета:', error);
-  //   alert("Первый триплет не удалось сохранить")
-  // }
-
-  // // 2. Тип объекта: Объект -> rdf:type -> rdfs:Class
-  // const triple2: TripleSend = {
-  //   subject: OntologyManager.generateNodeId(objectText), 
-  //   predicate: "http://www.w3.org/1999/02/22-rdf-syntax-ns#type",
-  //   object: "http://www.w3.org/2000/01/rdf-schema#Class"
-  // };
-
-  // try {
-  //   await postTriple(triple2);
-  //   console.log('Второй триплет (тип) успешно отправлен:', triple2);
-  // } catch (error) {
-  //   console.error('Ошибка при отправке второго триплета:', error);
-  //   alert("Второй триплет не удалось сохранить");
-  // }
-
-  // // 3. Лейбл объекта: Объект -> rdfs:label -> "название"
-  // const triple3: TripleSend = {
-  //   subject: OntologyManager.generateNodeId(objectText), 
-  //   predicate: "http://www.w3.org/2000/01/rdf-schema#label",
-  //   object: `"${objectText}"`
-  // };
-
-  // try {
-  //   await postTriple(triple3);
-  //   console.log('Третий триплет (лейбл) успешно отправлен:', triple3);
-  // } catch (error) {
-  //   console.error('Ошибка при отправке третьего триплета:', error);
-  //   alert("Третий триплет не удалось сохранить");
-  // }
 
   setSelection(null);
   window.getSelection()?.removeAllRanges();
