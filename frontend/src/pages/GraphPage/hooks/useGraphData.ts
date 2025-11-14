@@ -22,17 +22,16 @@ export const useGraphData = () => {
       console.log('useGraphData: Данные получены с сервера:', data);
       console.log('useGraphData: Nodes from server:', data.nodes?.length, 'Links:', data.links?.length);
 
-      // Проверяем что данные корректны
+
       if (!data || !data.nodes || !Array.isArray(data.nodes) || !data.links || !Array.isArray(data.links)) {
         throw new Error('Сервер вернул данные в некорректном формате');
       }
-
-      // Если граф пустой (новый пользователь или база данных пуста)
+      
       if (data.nodes.length === 0 && data.links.length === 0) {
         console.log('Граф пуст - создаём начальный узел');
         const fallbackNode: OntologyNode = {
-          id: "http://example.org/competencies#StartNode",
-          label: "Начальный узел",
+          id: "http://example.org/competencies#Class",
+          label: "Class",
           type: "class",
           children: [],
         };
@@ -40,8 +39,6 @@ export const useGraphData = () => {
         setIsLoading(false);
         return;
       }
-
-      // Загружаем данные с сервера
       console.log('useGraphData: Adding nodes to OntologyManager...');
       
       data.nodes.forEach(node => {
@@ -65,7 +62,6 @@ export const useGraphData = () => {
     } catch (error) {
       console.error('Ошибка при загрузке графа с сервера:', error);
       
-      // Формируем понятное сообщение об ошибке
       let errorMessage = 'Не удалось загрузить граф компетенций с сервера.';
       
       if (error instanceof Error) {

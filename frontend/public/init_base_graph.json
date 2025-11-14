@@ -1,0 +1,41 @@
+{
+    "nodes": [
+        {
+            "id": "http://example.org/competencies#root",
+            "label": "Корень",
+            "type": "class"
+        },
+        {
+            "id": "http://example.org/competencies#Class",
+            "label": "Class",
+            "type": "class"
+        },
+        {
+            "id": "http://example.org/competencies#Thing",
+            "label": "Thing",
+            "type": "class"
+        },
+        {
+            "id": "http://example.org/competencies#Property",
+            "label": "Property",
+            "type": "property"
+        }
+    ],
+    "links": [
+        {
+            "source": "http://example.org/competencies/root",
+            "target": "http://example.org/competencies#Class",
+            "predicate": "http://example.org/competencies#type"
+        },
+        {
+            "source": "http://example.org/competencies#root",
+            "target": "http://example.org/competencies#Thing",
+            "predicate": "http://example.org/competencies#type"
+        },
+        {
+            "source": "http://example.org/competencies#Class",
+            "target": "http://example.org/competencies#Property",
+            "predicate": "http://example.org/competencies#type"
+        }
+    ]
+}

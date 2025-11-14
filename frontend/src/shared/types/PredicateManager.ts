@@ -27,7 +27,7 @@ class PredicateManager {
         }
         // Генерируем валидный URI для предиката
         const namespace = 'http://example.org/competencies#';
-        const cleanLabel = label.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_-]/g, '_');
+        const cleanLabel = label.replace(/\s+/g, '_');
         return namespace + cleanLabel;
     }
     

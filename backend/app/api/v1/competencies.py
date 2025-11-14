@@ -34,40 +34,43 @@ async def save_graph(request: Request, graph_data: dict = Body(...)) -> dict:
         links = graph_data.get("links", [])
 
         # Проверяем узлы
+        # Мягкая валидация на уровне API:
+# - пропускаем только системные URI
+# - не требуем http:// у предиката/объекта: DAO сам нормализует/запишет литералы
         valid_nodes = []
         for node in nodes:
             node_id = node.get("id", "")
-            
-            # Проверяем, что это не системный URI
+            if not node_id:
+                logger.warning("Skipping node without id")
+                continue
             if CompetencyDAO._is_system_uri(node_id):
                 logger.debug(f"Skipping system node at API level: {node_id}")
                 continue
-                
-            if node_id.startswith(("http://", "https://")):
-                valid_nodes.append(node)
-            else:
-                logger.warning(f"Skipping invalid node URI: {node_id}")
+            # Ничего больше не режем — DAO сам приведёт к URI при необходимости
+            valid_nodes.append(node)
 
-        # Проверяем связи
         valid_links = []
         for link in links:
             source = link.get("source", "")
             predicate = link.get("predicate", "")
             target = link.get("target", "")
 
-            # Проверяем, что это не системные URI
+            if not source or not predicate or target is None:
+                logger.warning(f"Skipping incomplete link: {link}")
+                continue
+
+            # Системные — отбрасываем на API-слое
             if (CompetencyDAO._is_system_uri(source) or 
                 CompetencyDAO._is_system_uri(predicate) or 
-                CompetencyDAO._is_system_uri(target)):
+                (isinstance(target, str) and CompetencyDAO._is_system_uri(target))):
                 logger.debug(f"Skipping system link at API level: {source} -> {target} (predicate: {predicate})")
                 continue
 
-            if (source.startswith(("http://", "https://")) and
-                predicate.startswith(("http://", "https://")) and
-                target.startswith(("http://", "https://"))):
-                valid_links.append(link)
-            else:
-                logger.warning(f"Skipping invalid link: {source} -> {target} (predicate: {predicate})")
+            # Не проверяем startswith("http") — DAO сделает:
+            # - нормализацию source/predicate/target в URI;
+            # - вставку URI→URI или URI→"literal".
+            valid_links.append({"source": source, "predicate": predicate, "target": target})
+
 
         # Обновляем данные с валидными элементами
         validated_data = {
@@ -352,6 +355,10 @@ async def find_path(
     except Exception as e:
         logger.error(f"Error finding path: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+    
+
+def _is_uri(v: str) -> bool:
+    return isinstance(v, str) and v.startswith(("http://", "https://"))
 
 
 @router.post("/competencies/triple")
@@ -377,15 +384,12 @@ async def add_triple(
         object_value = triple_data.get("object")
 
         # Валидация URI
-        if not all([
-            subject and subject.startswith(("http://", "https://")),
-            predicate and predicate.startswith(("http://", "https://")),
-            object_value and object_value.startswith(("http://", "https://"))
-        ]):
+        # Разрешаем объект-литерал
+        if not (subject and _is_uri(subject) and predicate and _is_uri(predicate)):
             raise HTTPException(
-                status_code=400,
-                detail="All URIs must start with http:// or https://"
-            )
+            status_code=400,
+            detail="Subject and predicate must be valid URIs (http/https). Object may be URI or literal."
+        )
 
         logger.info(f"Adding triple: <{subject}> <{predicate}> <{object_value}> by user {user_id}")
 
