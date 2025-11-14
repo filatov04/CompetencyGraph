@@ -8,10 +8,9 @@ import type { FC, ReactNode } from 'react';
 import styles from './MarkupEditor.module.css';
 import { FileHTMLToString } from '../../features/FileHTMLToString/FileHTMLToString';
 import { getMarkup, postMarkup } from '../../shared/api/markupApi';
-import { getGraph } from '../../shared/api/graphApi';
 import type { CommentInterface } from '../../shared/types/markupTypes';
-import { postTriple } from '../../shared/api/generalApi';
-import type { TripleSend } from '../../shared/types/graphTypes';
+// import { postTriple } from '../../shared/api/generalApi';
+// import type { TripleSend } from '../../shared/types/graphTypes';
 import OntologyManager from '../../shared/types/OntologyManager';
 
 const MOCK_SUBJECTS = ['Субъект 1', 'Субъект 2', 'Субъект 3', 'Другой Субъект'];
@@ -124,22 +123,6 @@ const MarkupEditor: FC<MarkupEditorProps> = () => {
     // Генерируем filename если не предоставлен (используем timestamp или хеш)
     const fileIdentifier = filename || `file_${Date.now()}`;
     setCurrentFilename(fileIdentifier);
-
-    // Загружаем subjects и predicates через getGraph
-    try {
-      const { data } = await getGraph();
-      const loadedSubjects = Array.isArray(data.nodes) ? data.nodes.map((n: any) => n.label) : [];
-      const loadedPredicates = Array.isArray(data.links) ? data.links.map((l: any) => l.predicate) : [];
-      setSubjects(loadedSubjects.length > 0 ? loadedSubjects : MOCK_SUBJECTS);
-      setPredicates(
-        loadedPredicates.length > 0
-          ? Array.from(new Set(loadedPredicates))
-          : MOCK_PREDICATES
-      );
-    } catch (e) {
-      setSubjects(MOCK_SUBJECTS);
-      setPredicates(MOCK_PREDICATES);
-    }
 
     // Загружаем существующие комментарии для этого файла
     try {
@@ -648,28 +631,32 @@ const handleSaveComment = async (
         style={{ display: 'none' }}
       />
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, marginTop: 16 }}>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '8px' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
           <FileHTMLToString onFileRead={handleFileRead} />
-          <button
-            onClick={handleGraphUploadClick}
-            style={{
-              padding: '8px 16px',
-              borderRadius: 8,
-              background: '#3498db',
-              color: 'white',
-              border: 'none',
-              fontSize: 14,
-              cursor: 'pointer',
-              transition: 'background 0.2s',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = '#2980b9')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = '#3498db')}
-          >
-            📊 Загрузить граф (субъекты/предикаты)
-          </button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button
+              onClick={handleGraphUploadClick}
+              style={{
+                padding: '8px 16px',
+                height: 48,
+                borderRadius: 12,
+                background: '#3498db',
+                color: 'white',
+                border: 'none',
+                fontSize: 14,
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                transition: 'background 0.2s',
+                whiteSpace: 'nowrap',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#2980b9')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = '#3498db')}
+              title="Загрузить JSON с графом для субъектов и предикатов"
+            >
+              📊 Загрузить граф
+            </button>
             <button
               onClick={handleSaveMarkup}
               disabled={isSaving}
@@ -723,6 +710,9 @@ const handleSaveComment = async (
             >
               📥
             </button>
+          </div>
+          <div style={{ fontSize: 12, color: '#7f8c8d', textAlign: 'right', maxWidth: 300 }}>
+            📊 Загрузить граф → 💾 Сохранить разметку → 📥 Скачать обновленный граф
           </div>
           {saveSuccess && (
             <span style={{ color: '#27ae60', fontWeight: 'bold', fontSize: 18 }}>✔ Разметка успешно сохранена</span>
