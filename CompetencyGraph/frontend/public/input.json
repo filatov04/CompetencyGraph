@@ -1,0 +1,51 @@
+{
+    "nodes": [
+      {
+        "id": "http://example.org/competencies#MachineLearning",
+        "label": "Машинное обучение",
+        "type": "class"
+      },
+      {
+        "id": "http://example.org/competencies#Python",
+        "label": "Python",
+        "type": "class"
+      },
+      {
+        "id": "http://example.org/competencies#DataScience",
+        "label": "Data Science",
+        "type": "class"
+      },
+      {
+        "id": "http://example.org/competencies#DeepLearning",
+        "label": "Deep Learning",
+        "type": "class"
+      },
+      {
+        "id": "http://example.org/competencies#NeuralNetworks",
+        "label": "Neural Networks",
+        "type": "class"
+      }
+    ],
+    "links": [
+      {
+          "source": "http://example.org/competencies#MachineLearning",
+          "target": "http://example.org/competencies#Python",
+          "predicate": "http://example.org/competencies#requires"
+      },
+      {
+          "source": "http://example.org/competencies#MachineLearning",
+          "target": "http://example.org/competencies#DataScience",
+          "predicate": "http://example.org/competencies#partOf"
+      },
+      {
+          "source": "http://example.org/competencies#DeepLearning",
+          "target": "http://example.org/competencies#MachineLearning",
+          "predicate": "http://example.org/competencies#specializes"
+      },
+      {
+          "source": "http://example.org/competencies#DeepLearning",
+          "target": "http://example.org/competencies#NeuralNetworks",
+          "predicate": "http://example.org/competencies#requires"
+      }
+    ]
+  }

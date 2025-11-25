@@ -1,0 +1,74 @@
+.loadingContainer {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 1000;
+}
+
+.spinnerWrapper {
+  margin-bottom: 20px;
+  position: relative;
+  display: inline-block;
+  padding: 8px;
+  border-radius: 20px;
+  background: linear-gradient(
+    45deg,
+    #ff6b6b,
+    #ee5a6f,
+    #c06c84,
+    #6c5ce7,
+    #74b9ff,
+    #00cec9,
+    #00b894,
+    #55efc4,
+    #fdcb6e,
+    #ff7675,
+    #ff6b6b
+  );
+  background-size: 400% 400%;
+  animation: gradient 3s ease infinite;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.logo {
+  width: 120px;
+  height: 120px;
+  display: block;
+  border-radius: 15px;
+  background: white;
+  padding: 10px;
+}
+
+.loadingText {
+  font-size: 18px;
+  font-weight: 500;
+  background: linear-gradient(
+    45deg,
+    #ff6b6b,
+    #c06c84,
+    #6c5ce7,
+    #74b9ff,
+    #00cec9,
+    #fdcb6e
+  );
+  background-size: 200% 200%;
+  animation: gradient 3s ease infinite;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+

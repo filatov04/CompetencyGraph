@@ -1,0 +1,41 @@
+{
+    "nodes": [
+        {
+            "id": "http://example.org/root",
+            "label": "Корень",
+            "type": "class"
+        },
+        {
+            "id": "http://example.org/2000/01/rdf-schema#Class",
+            "label": "Class",
+            "type": "class"
+        },
+        {
+            "id": "http://example.org/2002/07/owl#Thing",
+            "label": "Thing",
+            "type": "class"
+        },
+        {
+            "id": "http://example.org/2000/01/rdf-schema#Property",
+            "label": "Property",
+            "type": "property"
+        }
+    ],
+    "links": [
+        {
+            "source": "http://example.org/root",
+            "target": "http://example.org/2000/01/rdf-schema#Class",
+            "predicate": "http://example.org/type"
+        },
+        {
+            "source": "http://example.org/root",
+            "target": "http://example.org/2002/07/owl#Thing",
+            "predicate": "http://example.org/type"
+        },
+        {
+            "source": "http://example.org/2000/01/rdf-schema#Class",
+            "target": "http://example.org/2000/01/rdf-schema#Property",
+            "predicate": "http://example.org/1999/02/22-rdf-syntax-ns#type"
+        }
+    ]
+}

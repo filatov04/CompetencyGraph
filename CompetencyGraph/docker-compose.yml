@@ -1,0 +1,122 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: CompetencyGraph-Backend
+    ports:
+      - "80:80"
+    depends_on:
+      graphdb:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    restart: unless-stopped
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: CompetencyGraph-Frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  graphdb:
+    image: ontotext/graphdb:10.6.1
+    container_name: CompetencyGraph-GraphDB
+    ports:
+      - "7200:7200"
+    volumes:
+      - graphdb_data:/opt/graphdb/home
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7200/rest/repositories"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - app-network
+    environment:
+      - GRAPHDB_LOG_LEVEL=DEBUG
+
+
+  graphdb-init:
+    image: curlimages/curl:latest
+    container_name: CompetencyGraph-GraphDB-Init
+    depends_on:
+      graphdb:
+        condition: service_healthy
+    volumes:
+      - ./backend/app/dao/repository-config.ttl:/tmp/repository-config.ttl
+      - ./backend/app/dao/init-repository.sh:/tmp/init-repository.sh
+    command: sh /tmp/init-repository.sh
+    restart: on-failure
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+    networks:
+      - app-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: CompetencyGraph-PostgreSQL
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/app/db/migrations:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: CompetencyGraph-Redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+volumes:
+  graphdb_data:
+  postgres_data:
+  redis_data:
+
+networks:
+  app-network:
+    driver: bridge

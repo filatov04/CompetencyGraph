@@ -1,0 +1,831 @@
+:root {
+  --font-primary: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  --font-size-base: 14px;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 600;
+}
+
+.graph-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #ffffff;
+  font-family: var(--font-primary);
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+}
+
+.graph-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e0e0e0;
+  background-color: #fafafa;
+}
+
+.graph-page__tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.graph-page__tab {
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  color: #555;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.graph-page__tab[aria-selected="true"] {
+ color: #007aff;
+  background-color: rgba(0, 122, 255, 0.1);
+  font-weight: var(--font-weight-bold);
+}
+
+.graph-page__login {
+  padding: 8px 16px;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  background-color: #007aff;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.graph-page__content {
+  flex: 1;
+  overflow: hidden;
+  padding: 16px;
+}
+
+.graph-page__svg {
+  width: 100%;
+  height: 100%;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+
+.link {
+  fill: none;
+  stroke: #999;
+  stroke-width: 1.5px;
+}
+
+.node circle {
+  stroke-width: 2px;
+  stroke: #fff;
+}
+
+.node.class circle {
+  fill: #1f77b4;
+}
+
+.node.property circle {
+  fill: #ff7f0e;
+}
+
+.node text {
+  font-size: 13px;
+  font-weight: var(--font-weight-bold);
+  fill: #222;
+  paint-order: stroke;
+  stroke: white;
+  stroke-width: 3px;
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
+  pointer-events: none;
+}
+
+.linkLabel {
+  font-size: 11px;
+  font-weight: var(--font-weight-bold);
+  fill: #333;
+  paint-order: stroke;
+  stroke: white;
+  stroke-width: 3px;
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
+  pointer-events: none;
+}
+
+.linkLabelBackground {
+  fill: white;
+  fill-opacity: 0.9;
+  stroke: #ddd;
+  stroke-width: 0.5;
+  rx: 3;
+  ry: 3;
+  pointer-events: none;
+}
+
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modalContent {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  width: 90%;
+  max-width: 700px;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 20px;
+  position: relative;
+}
+
+.closeButton {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  font-size: 28px;
+  cursor: pointer;
+  color: #666;
+  transition: all 0.2s;
+}
+
+
+.closeButton:hover {
+  color: #333;
+  transform: scale(1.1);
+}
+
+
+.contentArea {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+
+.rectContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rectRow {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.smallRect {
+  flex: 1;
+  min-width: 200px;
+  background: #f8f8f8;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rectTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.predicateDropdownContainer {
+  position: relative;
+}
+.predicateDropdownTrigger {
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  transition: all 0.2s;
+
+  white-space: nowrap;      /* текст в одну строку */
+  overflow: hidden;         /* скрываем выходящий текст */
+  text-overflow: ellipsis;  /* показываем "..." если не помещается */
+}
+.predicateDropdownTrigger:hover {
+  border-color: #c08bdc;
+}
+.arrow {
+  font-size: 12px;
+  margin-left: 8px;
+}
+.scrollableDropdownMenu {
+  position: absolute;
+  top: 110%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  max-height: 180px;
+  overflow-y: auto;   /* только вертикальный скролл */
+  overflow-x: hidden; /* убираем горизонтальный скролл */
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  padding: 8px 0;
+}
+
+.searchInput {
+  width: 90%;
+  margin: 0 5%;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+  .predicateOption {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s;
+
+  white-space: nowrap;      /* запрет переноса по умолчанию */
+  overflow: hidden;         /* обрезаем лишнее */
+  text-overflow: ellipsis;  /* показываем "..." для длинного текста */
+}
+
+
+.predicateOption:hover,
+.predicateOption.selected {
+  background: #e6d6f3;
+}
+
+.predicateForm {
+  display: flex;
+  flex-direction: column; /* вертикально */
+  gap: 6px;               /* немного пространства между input и кнопкой */
+  margin-top: 8px;
+}
+
+.predicateInput {
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  width: 100%;
+}
+
+.addPredicateButton {
+  padding: 6px 12px;
+  background: #c08bdc;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+  width: 100%; /* чтобы кнопка была ровно под инпутом */
+}
+
+.addPredicateButton:hover:not(:disabled) {
+  background: #a876c3;
+}
+
+.addButton {
+  padding: 10px 16px;
+  background: #6c63ff;
+  color: white;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+  align-self: flex-end;
+}
+
+.addButton:hover:not(:disabled) {
+  background: #564fcf;
+  transform: translateY(-2px);
+}
+
+.error {
+  color: #d32f2f;
+  font-size: 14px;
+}
+
+.nodePopup {
+  position: absolute;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  z-index: 100;
+  min-width: 300px;
+}
+
+.popupRect {
+  position: absolute;
+  background: white;
+  border: 1px solid #000000;
+  width: 100%;
+  max-height: 20%;
+}
+
+.popupHeader {
+  color: black;
+  padding: 1px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+}
+
+
+.popupContent {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+}
+
+.triplesList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tripleItem {
+  margin-bottom: 10px;
+  padding: 6px;
+  background: #f5f5f5;
+  border-radius: 4px;
+  display: flex;
+  gap: 8px;
+}
+
+.tripleSubject {
+  font-weight: bold;
+  color: #2c5eaf;
+}
+
+.triplePredicate {
+  color: #8a4ebf;
+}
+
+.tripleObject {
+  color: #2a8a5e;
+}
+
+.buttonRow{
+  margin-top: 15px;
+  display: flex;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.menuButton {
+
+  flex: 1;
+  padding: 8px 12px;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  background: none;
+  border: none;
+  border-right: 1px solid #e0e0e0;
+  border-top: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e0e0e0;
+  border-left: 1px solid #e0e0e0;
+
+}
+
+
+
+/* Заголовок модального окна */
+.editMenuHeader {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.editMenuHeader h3 {
+  color: #2c3e50;
+  font-size: 1.4rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Форма редактирования */
+.editForm {
+  margin-top: 16px;
+}
+
+.formRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.label {
+  color: #34495e;
+  font-size: 0.95rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.editInput {
+  flex: 1;
+  padding: 10px 14px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  color: #2c3e50;
+}
+
+.editInput:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+}
+
+/* Кнопки */
+.saveButton {
+  padding: 10px 18px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.saveButton:hover {
+  background-color: #2980b9;
+  transform: translateY(-1px);
+}
+
+.saveButton:active {
+  transform: translateY(0);
+}
+
+
+/* Адаптивность */
+@media (max-width: 480px) {
+  .modalContent {
+    width: 90%;
+    padding: 20px;
+  }
+  
+  .formRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  
+  .saveButton {
+    width: 100%;
+    margin-top: 8px;
+  }
+}
+
+
+/* GraphPage.module.css */
+
+.tripleContainer {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.editForm {
+  width: 100%;
+}
+
+.formRow {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.triplesListEditMode {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tripleItemEditMode {
+  display: grid;
+  grid-template-columns: 2fr 2fr 2fr 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.tripleItemEditMode:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.tripleSubjectEditMode,
+.triplePredicateEditMode,
+.tripleObjectEditMode {
+  padding: 10px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.tripleSubjectEditMode {
+  border-left: 3px solid #3498db;
+}
+
+.triplePredicateEditMode {
+  border-left: 3px solid #2ecc71;
+}
+
+.tripleObjectEditMode {
+  border-left: 3px solid #e74c3c;
+}
+
+.tripleSubjectEditMode:focus,
+.triplePredicateEditMode:focus,
+.tripleObjectEditMode:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.saveButton {
+  padding: 10px 12px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.saveButton:hover {
+  background-color: #2980b9;
+  transform: translateY(-1px);
+}
+
+.saveButton:active {
+  transform: translateY(0);
+}
+
+/* Сообщение при отсутствии триплетов */
+.tripleContainer > p {
+  text-align: center;
+  color: #7f8c8d;
+  font-style: italic;
+  padding: 20px;
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+  .tripleItemEditMode {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .saveButton {
+    width: 100%;
+    margin-top: 8px;
+  }
+  
+  .tripleSubjectEditMode,
+  .triplePredicateEditMode,
+  .tripleObjectEditMode {
+    width: 100%;
+  }
+}
+
+.deleteModalContent {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  width: 500px;
+  max-width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+
+.deleteModalContent {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  width: 600px;
+  max-width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  border: 1px solid #ff6b6b;
+}
+
+.deleteModalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #ffecec;
+}
+
+.deleteModalHeader h3 {
+  margin: 0;
+  color: #ff4d4f;
+  font-size: 1.5rem;
+}
+
+/* Секция с предупреждением */
+.warningSection {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #fff9f9;
+  border-radius: 8px;
+  border-left: 4px solid #ff4d4f;
+}
+
+.warningIcon {
+  font-size: 1.8rem;
+  color: #ff4d4f;
+}
+
+.warningText {
+  margin: 0;
+  color: #595959;
+  line-height: 1.5;
+}
+
+.warningText strong {
+  color: #ff4d4f;
+}
+
+/* Стили для списка триплетов */
+.affectedTriples {
+  margin-top: 20px;
+}
+
+.affectedTriples h4 {
+  margin: 0 0 10px 0;
+  color: #ff4d4f;
+  font-size: 1.1rem;
+}
+
+.triplesList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+}
+
+.tripleItem {
+  padding: 10px 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.tripleItem:last-child {
+  border-bottom: none;
+}
+
+.tripleSubject,
+.triplePredicate,
+.tripleObject {
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: #f6f6f6;
+}
+
+.tripleSubject {
+  color: #1890ff;
+}
+
+.triplePredicate {
+  color: #722ed1;
+}
+
+.tripleObject {
+  color: #fa8c16;
+}
+
+.tripleArrow {
+  color: #bfbfbf;
+}
+
+/* Стили для кнопок */
+.deleteModalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  margin-top: 25px;
+  padding-top: 15px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.modalButton {
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  font-size: 0.95rem;
+}
+
+.cancelButton {
+  background-color: #f0f0f0;
+  color: #595959;
+}
+
+.cancelButton:hover {
+  background-color: #d9d9d9;
+}
+
+.deleteConfirmButton {
+  background-color: #ff4d4f;
+  color: white;
+}
+
+.deleteConfirmButton:hover {
+  background-color: #ff7875;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(255, 77, 79, 0.3);
+}
+
+.deleteConfirmButton:active {
+  transform: translateY(0);
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #bfbfbf;
+  transition: color 0.2s;
+}
+
+.closeButton:hover {
+  color: #ff4d4f;
+}
+
+/* Анимации */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

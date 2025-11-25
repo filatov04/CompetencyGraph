@@ -1,0 +1,38 @@
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: white;
+  padding: 20px;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.footer {
+  text-align: center;
+}
+
+.footerText {
+  margin: 0;
+  color: #333;
+  font-size: 14px;
+}
+
+.link {
+  color: #0066cc;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s;
+  border-bottom: 1px solid transparent;
+}
+
+.link:hover {
+  color: #004c99;
+  border-bottom-color: #004c99;
+}
+

@@ -1,0 +1,65 @@
+.errorContainer {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  padding: 40px;
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  z-index: 1000;
+}
+
+.errorIcon {
+  font-size: 64px;
+  margin-bottom: 20px;
+}
+
+.errorTitle {
+  color: #d32f2f;
+  margin-bottom: 16px;
+  margin-top: 0;
+}
+
+.errorMessage {
+  color: #666;
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.retryButton {
+  padding: 12px 24px;
+  font-size: 16px;
+  background-color: #1976d2;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.retryButton:hover {
+  background-color: #1565c0;
+}
+
+.uploadButtonWrapper {
+  margin-top: 16px;
+}
+
+.uploadButton {
+  padding: 8px 16px;
+  font-size: 14px;
+  background-color: transparent;
+  color: #1976d2;
+  border: 1px solid #1976d2;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.uploadButton:hover {
+  background-color: #e3f2fd;
+}
+
