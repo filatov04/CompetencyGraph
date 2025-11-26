@@ -81,7 +81,18 @@ class VersionDAO:
 
             async with db_pool.acquire() as conn:
                 async with conn.transaction():
-                    # Обновляем версию узла
+                    # Проверяем существование пользователя
+                    user_exists = await conn.fetchval(
+                        'SELECT EXISTS(SELECT 1 FROM "user" WHERE id = $1)',
+                        user_id
+                    )
+
+                    if not user_exists:
+                        error_msg = f"User {user_id} not found in database. Cannot create version."
+                        logger.error(error_msg)
+                        raise ValueError(error_msg)
+
+                    # Обновляем версию узла с ссылкой на пользователя
                     row = await conn.fetchrow(
                         """
                         INSERT INTO node_version (node_uri, version, last_modified, last_modified_by)
@@ -96,9 +107,10 @@ class VersionDAO:
                         node_uri,
                         user_id
                     )
+
                     new_version = row["version"]
 
-                    # Записываем в историю только базовую информацию
+                    # Записываем в историю
                     await conn.execute(
                         """
                         INSERT INTO node_change_history

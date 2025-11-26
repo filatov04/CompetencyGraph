@@ -5,7 +5,7 @@ import logging
 from models.graph import GraphResponse, OntologyNode
 from dao.competency_dao import CompetencyDAO
 from dao.version_dao import VersionDAO
-from dependencies.auth import get_current_user_email, get_current_user_id
+from dependencies.auth import get_current_user_email, get_verified_user_id
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -26,12 +26,13 @@ async def get_graph() -> dict:
 async def save_graph(request: Request, graph_data: dict = Body(...)) -> dict:
     """Сохранить граф компетенций в GraphDB с версионированием"""
     try:
-        # Получаем user_id из токена
-        user_id = get_current_user_id(request)
+        # Получаем user_id из токена и проверяем существование пользователя
+        user_id = await get_verified_user_id(request)
 
         # Валидация данных перед сохранением
         nodes = graph_data.get("nodes", [])
         links = graph_data.get("links", [])
+        client_versions = graph_data.get("versions", {})  # версии узлов с клиента
 
         # Проверяем узлы
         # Мягкая валидация на уровне API:
@@ -60,8 +61,8 @@ async def save_graph(request: Request, graph_data: dict = Body(...)) -> dict:
                 continue
 
             # Системные — отбрасываем на API-слое
-            if (CompetencyDAO._is_system_uri(source) or 
-                CompetencyDAO._is_system_uri(predicate) or 
+            if (CompetencyDAO._is_system_uri(source) or
+                CompetencyDAO._is_system_uri(predicate) or
                 (isinstance(target, str) and CompetencyDAO._is_system_uri(target))):
                 logger.debug(f"Skipping system link at API level: {source} -> {target} (predicate: {predicate})")
                 continue
@@ -81,6 +82,43 @@ async def save_graph(request: Request, graph_data: dict = Body(...)) -> dict:
         nodes_count = len(valid_nodes)
         links_count = len(valid_links)
         logger.info(f"Saving graph: {nodes_count} nodes, {links_count} links by user {user_id}")
+
+        # Проверяем конфликты версий (если клиент передал версии)
+        if client_versions:
+            node_uris = [node["id"] for node in valid_nodes]
+            current_versions = await VersionDAO.get_nodes_versions(node_uris)
+
+            conflicts = []
+            for cv in current_versions:
+                node_uri = cv["node_uri"]
+                current_ver = cv["version"]
+                expected_ver = client_versions.get(node_uri, 0)
+
+                # Если версия на сервере новее, чем у клиента - конфликт
+                if current_ver > expected_ver:
+                    # Находим label узла для удобства
+                    node_label = next((n["label"] for n in valid_nodes if n["id"] == node_uri), node_uri)
+
+                    conflicts.append({
+                        "node_uri": node_uri,
+                        "node_label": node_label,
+                        "expected_version": expected_ver,
+                        "current_version": current_ver,
+                        "last_modified": cv.get("last_modified"),
+                        "last_modified_by": cv.get("last_modified_by")
+                    })
+
+            # Если есть конфликты - отклоняем сохранение
+            if conflicts:
+                logger.warning(f"Version conflicts detected: {len(conflicts)} nodes")
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "message": "Version conflict detected. Graph has been modified by another user.",
+                        "conflicts": conflicts,
+                        "suggestion": "Please reload the graph and try again."
+                    }
+                )
 
         # Сохраняем граф
         await CompetencyDAO.save_graph_to_db(validated_data)
@@ -355,7 +393,7 @@ async def find_path(
     except Exception as e:
         logger.error(f"Error finding path: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-    
+
 
 def _is_uri(v: str) -> bool:
     return isinstance(v, str) and v.startswith(("http://", "https://"))
@@ -377,7 +415,7 @@ async def add_triple(
     С версионированием изменения.
     """
     try:
-        user_id = get_current_user_id(request)
+        user_id = await get_verified_user_id(request)
 
         subject = triple_data.get("subject")
         predicate = triple_data.get("predicate")
@@ -458,7 +496,7 @@ async def update_triple(
     С версионированием изменения.
     """
     try:
-        user_id = get_current_user_id(request)
+        user_id = await get_verified_user_id(request)
 
         old_triple = update_data.get("old_triple", {})
         new_triple = update_data.get("new_triple", {})
@@ -471,18 +509,16 @@ async def update_triple(
         new_predicate = new_triple.get("predicate")
         new_object = new_triple.get("object")
 
-        # Валидация URI
+        # Валидация URI (subject и predicate должны быть URI, object может быть литералом)
         if not all([
             old_subject and old_subject.startswith(("http://", "https://")),
             old_predicate and old_predicate.startswith(("http://", "https://")),
-            old_object and old_object.startswith(("http://", "https://")),
             new_subject and new_subject.startswith(("http://", "https://")),
-            new_predicate and new_predicate.startswith(("http://", "https://")),
-            new_object and new_object.startswith(("http://", "https://"))
+            new_predicate and new_predicate.startswith(("http://", "https://"))
         ]):
             raise HTTPException(
                 status_code=400,
-                detail="All URIs must start with http:// or https://"
+                detail="Subject and predicate must be valid URIs (http:// or https://)"
             )
 
         logger.info(f"Updating triple by user {user_id}: OLD <{old_subject}> <{old_predicate}> <{old_object}> -> NEW <{new_subject}> <{new_predicate}> <{new_object}>")
@@ -544,17 +580,13 @@ async def delete_triple(
     С версионированием изменения.
     """
     try:
-        user_id = get_current_user_id(request)
+        user_id = await get_verified_user_id(request)
 
-        # Валидация URI
-        if not all([
-            subject.startswith(("http://", "https://")),
-            predicate.startswith(("http://", "https://")),
-            object_value.startswith(("http://", "https://"))
-        ]):
+        # Валидация URI (subject и predicate должны быть URI, object может быть литералом)
+        if not (subject.startswith(("http://", "https://")) and predicate.startswith(("http://", "https://"))):
             raise HTTPException(
                 status_code=400,
-                detail="All URIs must start with http:// or https://"
+                detail="Subject and predicate must be valid URIs (http:// or https://)"
             )
 
         logger.info(f"Deleting triple: <{subject}> <{predicate}> <{object_value}> by user {user_id}")
@@ -600,7 +632,7 @@ async def delete_node(
     С версионированием изменения.
     """
     try:
-        user_id = get_current_user_id(request)
+        user_id = await get_verified_user_id(request)
 
         # Валидация URI
         if not node_id.startswith(("http://", "https://")):
@@ -654,7 +686,7 @@ async def clear_graph(
                 detail="Please set confirm=true to clear the entire repository"
             )
 
-        user_id = get_current_user_id(request)
+        user_id = await get_verified_user_id(request)
         logger.warning(f"CLEARING ENTIRE REPOSITORY by user {user_id}")
 
         # Очищаем репозиторий

@@ -1,9 +1,18 @@
 import { api } from './customAxiosInstance';
 
+interface UserInfo {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  full_name: string;
+}
+
 interface NodeVersion {
   node_uri: string;
   version: number;
   last_modified: string | null;
+  last_modified_by: UserInfo | null;
 }
 
 interface NodeHistoryItem {
@@ -15,6 +24,7 @@ interface NodeHistoryItem {
   new_value: any;
   version: number;
   changed_at: string;
+  user: UserInfo | null;
 }
 
 interface UpdateNodeData {
@@ -48,4 +58,4 @@ const updateNodeWithVersion = async (
 };
 
 export { getNodeVersion, getNodeHistory, updateNodeWithVersion };
-export type { NodeVersion, NodeHistoryItem, UpdateNodeData };
+export type { NodeVersion, NodeHistoryItem, UpdateNodeData, UserInfo };

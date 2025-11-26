@@ -18,9 +18,19 @@ const deleteNode = async (nodeId: string) => {
   });
 };
 
+const deleteTriple = async (subject: string, predicate: string, objectValue: string) => {
+  return api.delete(`/competencies/triple`, {
+    params: {
+      subject: subject,
+      predicate: predicate,
+      object: objectValue
+    },
+  });
+};
+
 const getGraph = async () => {
   return api.get<GraphData>('/competencies/graph');
 }
 
-export { postGraph, getGraph, deleteNode };
+export { postGraph, getGraph, deleteNode, deleteTriple };
 export type { GraphData };

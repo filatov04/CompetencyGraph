@@ -50,7 +50,7 @@ class CompetencyDAO:
     @classmethod
     def _is_uri(cls, value: str) -> bool:
         return isinstance(value, str) and value.startswith(("http://", "https://"))
-    
+
     @classmethod
     def _sanitize_fragment(cls, value: str) -> str:
         """Сделать безопасный хвост для URI из произвольной строки."""
@@ -216,7 +216,7 @@ class CompetencyDAO:
         }
 
 
-    
+
     @classmethod
     def _is_system_uri(cls, uri: str) -> bool:
         system_namespaces = [
@@ -238,6 +238,7 @@ class CompetencyDAO:
         """
         Сохраняет граф в GraphDB через прямой HTTP запрос
         Фильтрует системные RDF/RDFS/OWL узлы и связи
+        Перед сохранением удаляет все пользовательские триплеты
         """
         type_map = {
             "class": "http://www.w3.org/2000/01/rdf-schema#Class",
@@ -252,6 +253,38 @@ class CompetencyDAO:
         skipped_system = 0
 
         repo = config.graphdb.repository
+
+        # -------- Очистка графа перед сохранением --------
+        # Удаляем все пользовательские триплеты (оставляем только системные RDF/RDFS/OWL)
+        clear_query = f"""
+        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        PREFIX owl: <http://www.w3.org/2002/07/owl#>
+
+        DELETE {{
+            ?s ?p ?o
+        }}
+        WHERE {{
+            ?s ?p ?o .
+            FILTER (
+                STRSTARTS(STR(?s), "http://example.org/") ||
+                STRSTARTS(STR(?p), "http://example.org/")
+            )
+        }}
+        """
+        logger.info("[SPARQL CLEAR] Clearing user graph before save")
+        try:
+            response = requests.post(
+                graphdb_url,
+                data={"update": clear_query},
+                auth=auth,
+                headers={"Accept": "application/json"}
+            )
+            response.raise_for_status()
+            logger.info("[SPARQL CLEAR] User graph cleared successfully")
+        except Exception as e:
+            logger.error(f"Failed to clear graph: {e}")
+            raise
 
         # Индекс литералов: id -> label (для target-узлов типа literal)
         literal_nodes: dict[str, str] = {

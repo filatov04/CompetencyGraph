@@ -30,17 +30,17 @@ class OntologyManager {
     public clear(): void {
     this.nodes.clear();
     this.links.clear();
-    PredicateManager.clear(); 
+    PredicateManager.clear();
   }
 
   public updateNodeType(nodeId: string, newType: OntologyNode['type']): boolean {
     const node = this.nodes.get(nodeId);
     if (!node) return false;
-    
-    
+
+
     const updatedNode = { ...node, type: newType };
-    this.nodes.set(nodeId, updatedNode); 
-    
+    this.nodes.set(nodeId, updatedNode);
+
     return true;
   }
 
@@ -53,7 +53,7 @@ class OntologyManager {
 
     let newId: string;
     const hashIndex = nodeId.indexOf('#');
-    
+
     if (hashIndex !== -1) {
         newId = nodeId.substring(0, hashIndex + 1) + newLabel;
     } else {
@@ -61,10 +61,10 @@ class OntologyManager {
     }
 
 
-    const updatedNode = { 
-        ...node, 
-        id: newId, 
-        label: newLabel 
+    const updatedNode = {
+        ...node,
+        id: newId,
+        label: newLabel
     };
 
 
@@ -74,7 +74,7 @@ class OntologyManager {
 
     // Обновляем ссылки (links всегда Set<RDFLink>)
     const newLinks = new Set<RDFLink>();
-    
+
     this.links.forEach(link => {
         if (link.source === nodeId) {
             newLinks.add({ ...link, source: newId });
@@ -84,7 +84,7 @@ class OntologyManager {
             newLinks.add(link);
         }
     });
-    
+
     this.links = newLinks;
 
 
@@ -112,7 +112,7 @@ class OntologyManager {
         children: node.children || []
       };
       this.nodes.set(node.id, newNode);
-      console.log('Узел добавлен в OntologyManager:', newNode); 
+      console.log('Узел добавлен в OntologyManager:', newNode);
       return newNode;
     }
     return this.nodes.get(node.id)!;
@@ -124,6 +124,26 @@ class OntologyManager {
       this.links.add({ source: sourceId, target: targetId, predicate });
       return true;
     }
+    return false;
+  }
+
+  public removeLink(sourceId: string, targetId: string, predicate: string): boolean {
+    const initialSize = this.links.size;
+
+    // Создаем новый Set без удаляемой связи
+    this.links = new Set(
+      Array.from(this.links).filter(
+        link => !(link.source === sourceId && link.target === targetId && link.predicate === predicate)
+      )
+    );
+
+    const removed = this.links.size < initialSize;
+    if (removed) {
+      console.log(`Link removed: ${sourceId} -> ${predicate} -> ${targetId}`);
+      return true;
+    }
+
+    console.warn(`Link not found: ${sourceId} -> ${predicate} -> ${targetId}`);
     return false;
   }
 
@@ -156,7 +176,7 @@ public getAvailablePredicates(): string[] {
     .map(node => node.label);
 
   const uniquePredicates = [...new Set([...managerPredicates, ...propertyNodes])];
-  
+
   return uniquePredicates;
 }
   public getConnectableNodes(): OntologyNode[] {
@@ -169,12 +189,12 @@ public generateNodeId(label: string): string {
     const baseId = label.replace(/\s+/g, '_');
     let fullUri = namespace + baseId;
     let counter = 1;
-    
+
     while (this.nodes.has(fullUri)) {
         fullUri = `${namespace}${baseId}_${counter}`;
         counter++;
     }
-    
+
     return fullUri;
 }
   public getPrefixFromUri(uri: string): string {
@@ -190,14 +210,21 @@ public generateNodeId(label: string): string {
         return prefix + uri.slice(baseUri.length);
       }
     }
-    const shortName = uri.includes('#') 
-      ? uri.split('#')[1] 
+    const shortName = uri.includes('#')
+      ? uri.split('#')[1]
       : uri.split('/').pop() || uri;
-    
+
   return shortName;
 }
 
-public getAllTriplesWithNode(label: string): { subject: string; predicate: string; object: string }[] {
+public getAllTriplesWithNode(label: string): {
+  subject: string;
+  predicate: string;
+  object: string;
+  subjectUri: string;
+  predicateUri: string;
+  objectUri: string;
+}[] {
   const node = this.getNodeByLabel(label);
   if (!node) return [];
 
@@ -208,11 +235,14 @@ public getAllTriplesWithNode(label: string): { subject: string; predicate: strin
   return relatedLinks.map(link => {
     const subjectNode = this.getNode(link.source);
     const objectNode = this.getNode(link.target);
-    
+
     return {
       subject: subjectNode ? this.getPrefixFromUri(subjectNode.id) : link.source,
       predicate: this.getPrefixFromUri(link.predicate),
-      object: objectNode ? this.getPrefixFromUri(objectNode.id) : link.target
+      object: objectNode ? this.getPrefixFromUri(objectNode.id) : link.target,
+      subjectUri: link.source,
+      predicateUri: link.predicate,
+      objectUri: link.target
     };
   });
 }
@@ -243,6 +273,48 @@ public deleteNode(nodeId: string): boolean {
     this.nodes.delete(nodeId);
 
     return true;
+}
+
+public removeOrphanedNodes(rootNodeId: string = 'http://example.org/root'): number {
+    // Находим все узлы, достижимые от root
+    const reachableNodes = new Set<string>();
+    const queue: string[] = [rootNodeId];
+
+    // BFS для поиска всех достижимых узлов
+    while (queue.length > 0) {
+        const currentId = queue.shift()!;
+        if (reachableNodes.has(currentId)) continue;
+
+        reachableNodes.add(currentId);
+
+        // Добавляем все связанные узлы в очередь
+        this.links.forEach(link => {
+            if (link.source === currentId && !reachableNodes.has(link.target)) {
+                queue.push(link.target);
+            }
+            if (link.target === currentId && !reachableNodes.has(link.source)) {
+                queue.push(link.source);
+            }
+        });
+    }
+
+    // Удаляем все недостижимые узлы
+    let deletedCount = 0;
+    const nodesToDelete: string[] = [];
+
+    this.nodes.forEach((_, nodeId) => {
+        if (!reachableNodes.has(nodeId)) {
+            nodesToDelete.push(nodeId);
+        }
+    });
+
+    nodesToDelete.forEach(nodeId => {
+        this.deleteNode(nodeId);
+        deletedCount++;
+    });
+
+    console.log(`Removed ${deletedCount} orphaned nodes`);
+    return deletedCount;
 }
 
 

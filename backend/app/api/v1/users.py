@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 import logging
 
 from dao.user_dao import UserDAO
-from dependencies.auth import get_current_user_id
+from dependencies.auth import get_verified_user_id
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 async def get_current_user(request: Request) -> dict:
     """Получить информацию о текущем пользователе"""
     try:
-        user_id = get_current_user_id(request)
+        user_id = await get_verified_user_id(request)
         user = await UserDAO.get_user_by_id(user_id)
 
         if not user:

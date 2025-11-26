@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getNodeVersion, getNodeHistory, type NodeVersion, type NodeHistoryItem } from '../../shared/api/versionApi';
+import { getNodeVersion, getNodeHistory, type NodeVersion, type NodeHistoryItem, type UserInfo } from '../../shared/api/versionApi';
 import styles from './NodeVersionInfo.module.css';
 
 interface NodeVersionInfoProps {
@@ -13,6 +13,24 @@ const NodeVersionInfo: React.FC<NodeVersionInfoProps> = ({ nodeId, onClose }: No
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+
+  // Функция для форматирования имени в формат "Фамилия И.О."
+  const formatUserName = (user: UserInfo | null): string => {
+    if (!user || !user.first_name || !user.last_name) {
+      return 'Неизвестный пользователь';
+    }
+
+    // Разбиваем first_name на части (может содержать "Имя Отчество")
+    const nameParts = user.first_name.trim().split(/\s+/);
+    const firstNameInitial = nameParts[0]?.charAt(0).toUpperCase() || '';
+    const middleNameInitial = nameParts[1]?.charAt(0).toUpperCase() || '';
+
+    // Формат: "Фамилия И.О." или "Фамилия И." если нет отчества
+    if (middleNameInitial) {
+      return `${user.last_name} ${firstNameInitial}.${middleNameInitial}.`;
+    }
+    return `${user.last_name} ${firstNameInitial}.`;
+  };
 
   useEffect(() => {
     const fetchVersionInfo = async () => {
@@ -112,6 +130,13 @@ const NodeVersionInfo: React.FC<NodeVersionInfoProps> = ({ nodeId, onClose }: No
           </div>
         )}
 
+        {version?.last_modified_by && (
+          <div className={styles.modifiedBlock}>
+            <div className={styles.label}>Автор изменения:</div>
+            <div className={styles.value}>{formatUserName(version.last_modified_by)}</div>
+          </div>
+        )}
+
         <button
           onClick={fetchHistory}
           className={styles.historyButton}
@@ -135,7 +160,7 @@ const NodeVersionInfo: React.FC<NodeVersionInfoProps> = ({ nodeId, onClose }: No
                   </span>
                 </div>
                 <div className={styles.historyUser}>
-                  Пользователь ID: {item.user_id}
+                  Автор: {formatUserName(item.user)}
                 </div>
                 {item.old_value && (
                   <div className={styles.historyValue}>

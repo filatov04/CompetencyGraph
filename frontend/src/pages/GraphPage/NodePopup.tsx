@@ -6,7 +6,6 @@ import PredicateManager from '../../shared/types/PredicateManager';
 import { EditNode } from './EditNode';
 import { DeleteNodeMenu } from './DeleteNodeMenu';
 import NodeVersionInfo from './NodeVersionInfo';
-import { deleteNode } from '../../shared/api/graphApi';
 
 
 const NodePopup: React.FC<{
@@ -184,23 +183,6 @@ const NodePopup: React.FC<{
                     onClose={() => setNodeToDelete(null)}
                     triples={OntologyManager.getAllTriplesWithNode(nodeToDelete.label)}
                     node={nodeToDelete}
-                    onDeleteConfirm={async (id) => {
-                    try {
-                        const response = await deleteNode(id);
-                        if (response.status === 200) {
-                            OntologyManager.deleteNode(id);
-                            onUpdate();
-                        }
-                        OntologyManager.deleteNode(id); // ✅ локальное удаление из памяти
-                        onUpdate(); // ✅ обновляем граф
-                        alert('Узел успешно удалён из базы данных');
-                    } catch (error) {
-                        console.error('Ошибка при удалении узла:', error);
-                        alert('Не удалось удалить узел из базы данных');
-                    } finally {
-                        setNodeToDelete(null); // ✅ закрываем окно после удаления
-                    }
-                    }}
                     onUpdate={onUpdate}
                 />
                 )}

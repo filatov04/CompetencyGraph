@@ -18,7 +18,7 @@ import { useFileUpload } from "./hooks/useFileUpload";
 const GraphPage: React.FC = () => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  
+
   const [showMenu, setShowMenu] = useState(false);
   const [predicates, setPredicates] = useState<string[]>([]);
   const [nodes, setNodes] = useState<OntologyNode[]>([]);
@@ -36,25 +36,23 @@ const GraphPage: React.FC = () => {
     const allNodes = OntologyManager.getAllNodes();
     const allLinks = OntologyManager.getAllLinks();
     const allPredicates = OntologyManager.getAvailablePredicates();
-    
-    console.log('GraphPage: Data from manager:', { 
-      nodes: allNodes.length, 
-      links: allLinks.length, 
-      predicates: allPredicates.length 
+
+    console.log('GraphPage: Data from manager:', {
+      nodes: allNodes.length,
+      links: allLinks.length,
+      predicates: allPredicates.length
     });
-    
+
     // Просто обновляем состояние - React оптимизирует это
     setNodes(allNodes);
     setLinks(allLinks);
     setPredicates(allPredicates);
-    
+
     console.log('GraphPage: State updated');
   }, []);
 
   // Хук для действий с графом (сохранение, добавление)
   const { isSaving, handleSaveGraph, handleAddTriple } = useGraphActions(
-    nodes,
-    links,
     updateDataFromManager
   );
 
@@ -81,7 +79,7 @@ const GraphPage: React.FC = () => {
   useEffect(() => {
     console.log('GraphPage: Component mounted, initializing data...');
     initializeData();
-    
+
     return () => {
       console.log('GraphPage: Component unmounting, cleaning up...');
       const svgElement = svgRef.current;
@@ -157,13 +155,13 @@ const GraphPage: React.FC = () => {
         accept=".json,application/json"
         style={{ display: 'none' }}
       />
-      
+
       {/* Индикатор загрузки */}
       {isLoading && <LoadingSpinner />}
 
       {/* Отображение ошибки */}
       {loadError && !isLoading && (
-        <ErrorDisplay 
+        <ErrorDisplay
           error={loadError}
           onRetry={initializeData}
           onUploadFile={handleUploadClick}
@@ -179,7 +177,7 @@ const GraphPage: React.FC = () => {
           style={{ opacity: (isLoading || loadError) ? 0.3 : 1 }}
         />
       </div>
-     
+
       {/* Меню создания нового триплета */}
       {showMenu && (
         <NewTripleMenu
